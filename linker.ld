@@ -1,27 +1,24 @@
-ENTRY(start)
+ENTRY(_start)
 
 SECTIONS
 {
-  /* Load the kernel at 1MB (GRUB recommended) */
-  . = 1M;
+    /* Kernel loads at 1MB */
+    . = 1M;
 
-  /* Text section (code) */
-  .text :
-  {
-    *(.multiboot)
-    *(.text)
-  }
+    .text : {
+        *(.multiboot)
+        *(.text*)
+    }
 
-  /* Data section (initialized data) */
-  .data :
-  {
-    *(.data)
-  }
+    .rodata : {
+        *(.rodata*)
+    }
 
-  /* BSS section (uninitialized data) */
-  .bss :
-  {
-    *(COMMON)
-    *(.bss)
-  }
+    .data : {
+        *(.data*)
+    }
+
+    .bss : {
+        *(.bss*)
+    }
 }

@@ -1,51 +1,59 @@
-# === Directories ===
-BUILD_DIR = build
-ISO_DIR = $(BUILD_DIR)/iso
-BOOT_DIR = boot
-KERNEL_DIR = kernel
+# Makefile for IronicOS
 
-# === Files ===
-BOOT_OBJ = $(BUILD_DIR)/boot.o
-KERNEL_OBJ = $(BUILD_DIR)/kernel.o
-KERNEL_ELF = $(BUILD_DIR)/kernel.elf
-ISO_FILE = $(BUILD_DIR)/IronicOS.iso
+# Compiler and tools
+AS      := nasm
+CC      := i686-elf-gcc
+LD      := i686-elf-ld
+OBJCOPY := i686-elf-objcopy
+GRUBDIR := isodir/boot/grub
 
-# === Tools ===
-AS = nasm
-CC = i686-elf-gcc
-LD = i686-elf-ld
+# Flags
+CFLAGS  := -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+LDFLAGS := -T linker.ld -nostdlib
 
-# === Flags ===
-CFLAGS = -ffreestanding -O2 -Wall -Wextra
-LDFLAGS = -T linker.ld -nostdlib
+# Directories
+SRC_DIR := src
+BOOT_DIR := boot
+BUILD_DIR := build
+KERNEL_DIR := kernel
 
-# === Default Target ===
-all: $(ISO_FILE)
+# Sources
+KERNEL_SRC := $(wildcard $(KERNEL_DIR)/*.c)
+KERNEL_OBJ := $(patsubst $(KERNEL_DIR)/%.c, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
 
-# === Build ISO ===
-$(ISO_FILE): $(KERNEL_ELF)
-	mkdir -p $(ISO_DIR)/boot/grub
-	cp $(KERNEL_ELF) $(ISO_DIR)/boot/kernel.elf
-	echo 'set timeout=0'                          > $(ISO_DIR)/boot/grub/grub.cfg
-	echo 'menuentry "IronicOS" {'                >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo '  multiboot /boot/kernel.elf'          >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo '}'                                     >> $(ISO_DIR)/boot/grub/grub.cfg
-	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
+# Output
+ISO_NAME := IronicOS.iso
+BIN_NAME := kernel.bin
 
-# === Link kernel (boot + C) ===
-$(KERNEL_ELF): $(BOOT_OBJ) $(KERNEL_OBJ) linker.ld
-	$(LD) $(LDFLAGS) -o $(KERNEL_ELF) $(BOOT_OBJ) $(KERNEL_OBJ)
+all: iso
 
-# === Assemble bootloader ===
-$(BOOT_OBJ): $(BOOT_DIR)/boot.asm
-	$(AS) -f elf32 $< -o $@
-
-# === Compile kernel ===
-$(KERNEL_OBJ): $(KERNEL_DIR)/kernel.c
+# Compile C kernel source files
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c
+	mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# === Clean Build Files ===
-clean:
-	rm -rf $(BUILD_DIR)/*.o $(BUILD_DIR)/*.elf $(BUILD_DIR)/*.iso $(ISO_DIR)
+# Assemble bootloader
+$(BUILD_DIR)/boot.o: $(BOOT_DIR)/boot.asm
+	mkdir -p $(BUILD_DIR)
+	$(AS) -f elf32 $< -o $@
 
-.PHONY: all clean
+# Link kernel
+$(BUILD_DIR)/$(BIN_NAME): $(BUILD_DIR)/boot.o $(KERNEL_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+# Create ISO with GRUB
+iso: $(BUILD_DIR)/$(BIN_NAME)
+	mkdir -p $(GRUBDIR)
+	cp $< $(GRUBDIR)/kernel.bin
+	cp grub.cfg $(GRUBDIR)/
+	grub-mkrescue -o $(ISO_NAME) isodir
+
+# Run in QEMU
+run: iso
+	qemu-system-i386 -cdrom $(ISO_NAME)
+
+# Clean build files
+clean:
+	rm -rf $(BUILD_DIR) isodir $(ISO_NAME)
+
+.PHONY: all clean run iso
