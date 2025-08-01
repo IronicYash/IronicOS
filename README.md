@@ -1,6 +1,6 @@
 # 🌀 IronicOS
 
-**IronicOS** is a minimalist hobby operating system written from scratch in **C** and **x86 Assembly**, built for fun, learning, and pure irony — because why not write an OS in 2025?
+**IronicOS** is a minimalist operating system written from scratch in **C** and **x86 Assembly**, built forlearning, and pure irony 
 
 ---
 
