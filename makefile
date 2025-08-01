@@ -33,18 +33,18 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Assemble bootloader
-$(BUILD_DIR)/boot.o: $(BOOT_DIR)/boot.asm
+$(BUILD_DIR)/boot.bin: $(BOOT_DIR)/boot.asm
 	mkdir -p $(BUILD_DIR)
-	$(AS) -f elf32 $< -o $@
+	$(AS) -f bin $< -o $@
 
 # Link kernel
-$(BUILD_DIR)/$(BIN_NAME): $(BUILD_DIR)/boot.o $(KERNEL_OBJ)
+$(BUILD_DIR)/$(BIN_NAME): $(KERNEL_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 # Create ISO with GRUB
-iso: $(BUILD_DIR)/$(BIN_NAME)
+iso: $(BUILD_DIR)/boot.bin
 	mkdir -p $(GRUBDIR)
-	cp $< $(GRUBDIR)/kernel.bin
+	cp $< $(GRUBDIR)/boot.bin
 	cp grub.cfg $(GRUBDIR)/
 	grub-mkrescue -o $(ISO_NAME) isodir
 
