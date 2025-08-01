@@ -1,0 +1,28 @@
+name: Build IronicOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential nasm xorriso grub-pc-bin qemu-utils
+
+    - name: Build ISO
+      run: |
+        make
+
+    - name: Show ISO file
+      run: |
+        ls -lh build/IronicOS.iso
