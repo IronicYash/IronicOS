@@ -1,5 +1,5 @@
 name: Build IronicOS
-
+ 
 on:
   push:
     branches: [main]
@@ -25,4 +25,4 @@ jobs:
 
     - name: Show ISO file
       run: |
-        ls -lh build/IronicOS.iso
+        ls -lh IronicOS.iso
