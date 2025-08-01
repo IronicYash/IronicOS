@@ -42,3 +42,10 @@ IronicOS/
 ├── linker.ld              # Linker script for memory layout
 ├── Makefile               # Build system
 └── README.md              # Project overview
+
+## License
+
+IronicOS is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html).
+
+You are free to use, modify, and distribute this software under the terms of the GPLv3.  
+See the [LICENSE](./LICENSE) file for full details.
