@@ -5,7 +5,7 @@
 
 <h1 align="center">🌀 IronicOS</h1>
 <p align="center">
-  A simple experimental operating system built from scratch with 💙 in C, Assembly & GRUB. <br>
+  A simple experimental operating system built from scratch with ❤️ in C, Assembly & GRUB. <br>
   Learn systems programming, kernel development, and bootloader basics—all in one project.
 </p>
 
