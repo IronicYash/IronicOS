@@ -9,7 +9,7 @@ const unsigned int multiboot_header[] = {
 };
 
 void kernel_main() {
-    kernel_print("Hello ! ");
+    kernel_print("IronicOS Kernel Booted Successfully!\n");
     // Main loop of the kernel
     while (1) {
         // Kernel tasks would be executed here
