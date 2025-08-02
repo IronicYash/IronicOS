@@ -1,4 +1,5 @@
 #include "kernel.h"
+#include "../lib/screen.h"
 
 __attribute__((section(".multiboot")))
 const unsigned int multiboot_header[] = {
@@ -9,6 +10,8 @@ const unsigned int multiboot_header[] = {
 };
 
 void kernel_main() {
+    clear_screen();
+    kernel_print("Initializing Kernel...\n");
     kernel_print("IronicOS Kernel Booted Successfully!\n");
     // Main loop of the kernel
     while (1) {

@@ -5,9 +5,12 @@ LD      := ld
 GRUBDIR := isodir/boot/grub
 BUILD   := build
 ISO     := IronicOS.iso
+INCLUDES := -Ilib
 
 # === FLAGS ===
-CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+		   -fno-exceptions -fno-pic -fno-stack-protector \
+		   -fno-builtin -nostdlib $(INCLUDES)
 LDFLAGS := -T linker.ld -nostdlib -m elf_i386
 
 # === SOURCES ===
