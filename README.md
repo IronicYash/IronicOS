@@ -1,51 +1,46 @@
-# 🌀 IronicOS
+<p align="center">
+  <img src="https://img.shields.io/badge/IronicOS-Building-brightgreen?style=for-the-badge&logo=linux" alt="IronicOS Badge">
+  <img src="https://img.shields.io/github/license/yourusername/IronicOS?style=for-the-badge" alt="License Badge">
+</p>
 
-**IronicOS** is a minimalist operating system written from scratch in **C** and **x86 Assembly**, built forlearning, and pure irony 
-
----
-
-## 🛠 Features (Planned)
-
-- [x] Bootloader (Assembly)
-- [x] GRUB Multiboot compatible
-- [x] C-based kernel entry
-- [ ] VGA screen output
-- [ ] Keyboard input
-- [ ] Memory management
-- [ ] Shell (basic command-line)
-- [ ] File system
-- [ ] Multitasking
+<h1 align="center">🌀 IronicOS</h1>
+<p align="center">
+  A simple experimental operating system built from scratch with 💙 in C, Assembly & GRUB. <br>
+  Learn systems programming, kernel development, and bootloader basics—all in one project.
+</p>
 
 ---
 
-## 📁 Project Structure
-IronicOS/
-├── boot/                  # Bootloader code
-│   └── boot.asm
-│
-├── kernel/                # Kernel written in C
-│   └── kernel.c
-│
-├── lib/                   # (Optional) Future low-level helper functions
-│
-├── include/               # (Optional) Shared header files
-│
-├── build/                 # Auto-generated compiled files (ignored by Git)
-│   ├── IronicOS.iso       # Bootable ISO image (make output)
-│   └── kernel.elf         # Compiled ELF binary (make output)
-│
-├── .github/               # GitHub Actions CI
-│   └── workflows/
-│       └── build.yml
-│
-├── .gitignore             # Ignore compiled & temporary files
-├── linker.ld              # Linker script for memory layout
-├── Makefile               # Build system
-└── README.md              # Project overview
+## 🚀 Getting Started
 
-## License
+### 📦 Requirements
+- GCC cross-compiler (`i686-elf-gcc`)
+- `nasm` assembler
+- `grub-pc-bin`, `xorriso`, `mtools`
+- `make`, `qemu` for running the OS
 
-IronicOS is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html).
+### 🛠️ Build & Run
 
-You are free to use, modify, and distribute this software under the terms of the GPLv3.  
-See the [LICENSE](./LICENSE) file for full details.
+```bash
+# Clone the repo
+git clone https://github.com/IronicYash/IronicOS.git
+cd IronicOS
+
+# Build the kernel and ISO
+make
+
+# Run it in QEMU
+make run
+
+## 📂 Project Structure
+
+```bash
+.
+├── boot/           # Bootloader (boot.asm)
+├── build/          # Compiled object files and binaries
+├── kernel/         # C source code for kernel
+├── isodir/         # ISO layout with GRUB bootloader
+├── linker.ld       # Linker script
+├── grub.cfg        # GRUB menu configuration
+├── Makefile        # Automated build process
+└── IronicOS.iso    # Output bootable ISO
