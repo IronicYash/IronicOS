@@ -1,4 +1,4 @@
-; boot/boot.asm - bootloader entry
+; filepath: boot/boot.asm
 BITS 16
 ORG 0x7c00
 

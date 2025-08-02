@@ -2,14 +2,14 @@
 
 # Compiler and tools
 AS      := nasm
-CC      := i686-elf-gcc
-LD      := i686-elf-ld
-OBJCOPY := i686-elf-objcopy
+CC      := gcc
+LD      := ld
+OBJCOPY := objcopy
 GRUBDIR := isodir/boot/grub
 
 # Flags
-CFLAGS  := -std=gnu99 -ffreestanding -O2 -Wall -Wextra
-LDFLAGS := -T linker.ld -nostdlib
+CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+LDFLAGS := -T linker.ld -nostdlib -m elf_i386
 
 # Directories
 SRC_DIR := src
@@ -19,7 +19,7 @@ KERNEL_DIR := kernel
 
 # Sources
 KERNEL_SRC := $(wildcard $(KERNEL_DIR)/*.c)
-KERNEL_OBJ := $(patsubst $(KERNEL_DIR)/%.c, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
+KERNEL_OBJ := build/multiboot_header.o build/entry.o build/kernel_main.o
 
 # Output
 ISO_NAME := IronicOS.iso
@@ -39,12 +39,15 @@ $(BUILD_DIR)/boot.bin: $(BOOT_DIR)/boot.asm
 
 # Link kernel
 $(BUILD_DIR)/$(BIN_NAME): $(KERNEL_OBJ)
-	$(LD) $(LDFLAGS) -o $@ $^
+	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/kernel.elf $^
+	$(OBJCOPY) -O binary $(BUILD_DIR)/kernel.elf $@
 
 # Create ISO with GRUB
-iso: $(BUILD_DIR)/boot.bin
+iso: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/$(BIN_NAME)
 	mkdir -p $(GRUBDIR)
-	cp $< $(GRUBDIR)/boot.bin
+	mkdir -p isodir/boot
+	cp $(BUILD_DIR)/boot.bin $(GRUBDIR)/boot.bin
+	cp $(BUILD_DIR)/$(BIN_NAME) isodir/boot/kernel.bin
 	cp grub.cfg $(GRUBDIR)/
 	grub-mkrescue -o $(ISO_NAME) isodir
 
@@ -57,3 +60,13 @@ clean:
 	rm -rf $(BUILD_DIR) isodir $(ISO_NAME)
 
 .PHONY: all clean run iso
+
+# Assemble multiboot header
+$(BUILD_DIR)/multiboot_header.o: $(KERNEL_DIR)/multiboot_header.asm
+	mkdir -p $(BUILD_DIR)
+	$(AS) -f elf32 $< -o $@
+
+# Assemble kernel entry
+$(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.asm
+	mkdir -p $(BUILD_DIR)
+	$(AS) -f elf32 $< -o $@
