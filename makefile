@@ -21,7 +21,11 @@ KERNEL_OBJ := \
 	$(BUILD)/multiboot_header.o \
 	$(BUILD)/entry.o \
 	$(BUILD)/kernel_main.o \
-	$(BUILD)/screen.o
+	$(BUILD)/screen.o \
+	$(BUILD)/memory.o \
+	$(BUILD)/keyboard.o \
+	$(BUILD)/ports.o \
+	$(BUILD)/string.o
 
 KERNEL_ELF := $(BUILD)/kernel.elf
 
@@ -44,6 +48,22 @@ $(BUILD)/multiboot_header.o: kernel/multiboot_header.asm
 $(BUILD)/entry.o: kernel/entry.asm
 	mkdir -p $(BUILD)
 	$(AS) -f elf32 $< -o $@
+
+$(BUILD)/memory.o: kernel/memory.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/keyboard.o: lib/keyboard.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/ports.o: cpu/ports.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/string.o: lib/string.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c lib/string.c -o $(BUILD)/string.o
 
 # === LINK ELF KERNEL ===
 $(KERNEL_ELF): $(KERNEL_OBJ)

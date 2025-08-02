@@ -10,11 +10,11 @@
 uint16_t* vga_buffer = (uint16_t*)VGA_ADDRESS;
 uint16_t cursor = 0;
 
-void kernel_print(const char* str) {
-    for (int i = 0; str[i] != '\0'; i++) {
-        vga_buffer[cursor++] = (WHITE_ON_BLACK << 8) | str[i];
-    }
-}
+// void kernel_print(const char* str) {
+//     for (int i = 0; str[i] != '\0'; i++) {
+//         vga_buffer[cursor++] = (WHITE_ON_BLACK << 8) | str[i];
+//     }
+// }
 
 // Data structure definitions
 typedef struct {
