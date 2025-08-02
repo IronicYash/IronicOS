@@ -1,72 +1,88 @@
-# Makefile for IronicOS
-
-# Compiler and tools
+# === TOOLS ===
 AS      := nasm
 CC      := gcc
 LD      := ld
-OBJCOPY := objcopy
 GRUBDIR := isodir/boot/grub
+BUILD   := build
+ISO     := IronicOS.iso
 
-# Flags
+# === FLAGS ===
 CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 LDFLAGS := -T linker.ld -nostdlib -m elf_i386
 
-# Directories
-SRC_DIR := src
-BOOT_DIR := boot
-BUILD_DIR := build
-KERNEL_DIR := kernel
+# === SOURCES ===
+KERNEL_SRC := kernel/kernel_main.c
+LIB_SRC    := lib/screen.c
 
-# Sources
-KERNEL_SRC := $(wildcard $(KERNEL_DIR)/*.c)
-KERNEL_OBJ := build/multiboot_header.o build/entry.o build/kernel_main.o
+KERNEL_OBJ := \
+	$(BUILD)/multiboot_header.o \
+	$(BUILD)/entry.o \
+	$(BUILD)/kernel_main.o \
+	$(BUILD)/screen.o
 
-# Output
-ISO_NAME := IronicOS.iso
-BIN_NAME := kernel.bin
+KERNEL_ELF := $(BUILD)/kernel.elf
 
+# === DEFAULT ===
 all: iso
 
-# Compile C kernel source files
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c
-	mkdir -p $(BUILD_DIR)
+# === COMPILE ===
+$(BUILD)/kernel_main.o: kernel/kernel_main.c
+	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Assemble bootloader
-$(BUILD_DIR)/boot.bin: $(BOOT_DIR)/boot.asm
-	mkdir -p $(BUILD_DIR)
-	$(AS) -f bin $< -o $@
+$(BUILD)/screen.o: lib/screen.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Link kernel
-$(BUILD_DIR)/$(BIN_NAME): $(KERNEL_OBJ)
-	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/kernel.elf $^
-	$(OBJCOPY) -O binary $(BUILD_DIR)/kernel.elf $@
+$(BUILD)/multiboot_header.o: kernel/multiboot_header.asm
+	mkdir -p $(BUILD)
+	$(AS) -f elf32 $< -o $@
 
-# Create ISO with GRUB
-iso: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/$(BIN_NAME)
+$(BUILD)/entry.o: kernel/entry.asm
+	mkdir -p $(BUILD)
+	$(AS) -f elf32 $< -o $@
+
+# === LINK ELF KERNEL ===
+$(KERNEL_ELF): $(KERNEL_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $(KERNEL_OBJ)
+
+# === BUILD ISO ===
+iso: $(KERNEL_ELF)
 	mkdir -p $(GRUBDIR)
-	mkdir -p isodir/boot
-	cp $(BUILD_DIR)/boot.bin $(GRUBDIR)/boot.bin
-	cp $(BUILD_DIR)/$(BIN_NAME) isodir/boot/kernel.bin
 	cp grub.cfg $(GRUBDIR)/
-	grub-mkrescue -o $(ISO_NAME) isodir
+	cp $(KERNEL_ELF) isodir/boot/kernel.elf
+	grub-mkrescue -o $(ISO) isodir
 
-# Run in QEMU
+# === RUN ===
 run: iso
-	qemu-system-i386 -cdrom $(ISO_NAME)
+	qemu-system-i386 -cdrom $(ISO)
 
-# Clean build files
+# === CLEAN ===
 clean:
-	rm -rf $(BUILD_DIR) isodir $(ISO_NAME)
+	rm -rf build isodir $(ISO)
 
-.PHONY: all clean run iso
+.PHONY: all clean iso run
 
-# Assemble multiboot header
-$(BUILD_DIR)/multiboot_header.o: $(KERNEL_DIR)/multiboot_header.asm
-	mkdir -p $(BUILD_DIR)
-	$(AS) -f elf32 $< -o $@
+# === INSTALL ===
+install: iso	
+	@echo "Installing IronicOS ISO to /usr/local/share/ironicos"
+	mkdir -p /usr/local/share/ironicos
+	cp $(ISO) /usr/local/share/ironicos/
+	@echo "Installation complete. You can now run IronicOS using 'make run'."
 
-# Assemble kernel entry
-$(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.asm
-	mkdir -p $(BUILD_DIR)
-	$(AS) -f elf32 $< -o $@
+# === UNINSTALL ===
+uninstall:
+	@echo "Uninstalling IronicOS ISO from /usr/local/share/ironicos"
+	rm -f /usr/local/share/ironicos/$(ISO)
+	@echo "Uninstallation complete."
+
+# === HELP ===
+help:
+	@echo "Makefile for IronicOS"
+	@echo "Usage:"
+	@echo "  make all       - Build the ISO image"
+	@echo "  make run       - Run IronicOS in QEMU"
+	@echo "  make clean     - Clean build artifacts"
+	@echo "  make install   - Install IronicOS ISO to /usr/local/share/ironicos"
+	@echo "  make uninstall - Uninstall IronicOS ISO from /usr/local/share/ironicos"
+	@echo "  make help      - Show this help message"

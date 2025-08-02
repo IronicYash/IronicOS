@@ -1,10 +1,15 @@
-; filepath: kernel/multiboot_header.asm
-section .multiboot
-align 4
-    MULTIBOOT_MAGIC      equ 0x1BADB002
-    MULTIBOOT_FLAGS      equ 0x00010003
-    MULTIBOOT_CHECKSUM   equ -(MULTIBOOT_MAGIC + MULTIBOOT_FLAGS)
+section .multiboot_header
+align 8
 
-    dd MULTIBOOT_MAGIC
-    dd MULTIBOOT_FLAGS
-    dd MULTIBOOT_CHECKSUM
+multiboot2_header:
+    dd 0xE85250D6            ; Magic
+    dd 0                     ; Architecture (0 = i386)
+    dd header_end - multiboot2_header ; Header length
+    dd 0x100000000 - (0xE85250D6 + 0 + (header_end - multiboot2_header)) ; Checksum
+
+    ; --- Required End Tag ---
+    dw 0                     ; Tag Type (0 = End)
+    dw 0                     ; Flags
+    dd 8                     ; Size of tag
+
+header_end:

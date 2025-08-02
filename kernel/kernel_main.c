@@ -1,12 +1,15 @@
 #include "kernel.h"
 
+__attribute__((section(".multiboot")))
+const unsigned int multiboot_header[] = {
+    0xe85250d6,    // magic number (Multiboot2)
+    0,             // architecture (0 = i386)
+    0,             // header length (filled by linker)
+    -(0xe85250d6 + 0 + 0) // checksum
+};
+
 void kernel_main() {
-    char *video = (char*)0xb8000;
-    const char *msg = "Hello, IronicOS!";
-    for (int i = 0; msg[i] != 0; i++) {
-        video[i * 2] = msg[i];
-        video[i * 2 + 1] = 0x0F; // White on black
-    }
+    kernel_print("Hello ! ");
     // Main loop of the kernel
     while (1) {
         // Kernel tasks would be executed here
