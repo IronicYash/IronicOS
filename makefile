@@ -10,7 +10,8 @@ INCLUDES := -Ilib
 # === FLAGS ===
 CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
 		   -fno-exceptions -fno-pic -fno-stack-protector \
-		   -fno-builtin -nostdlib $(INCLUDES)
+		   -fno-builtin -nostdlib $(INCLUDES) 
+		   
 LDFLAGS := -T linker.ld -nostdlib -m elf_i386
 
 # === SOURCES ===
@@ -25,7 +26,13 @@ KERNEL_OBJ := \
 	$(BUILD)/memory.o \
 	$(BUILD)/keyboard.o \
 	$(BUILD)/ports.o \
-	$(BUILD)/string.o
+	$(BUILD)/string.o \
+	$(BUILD)/isr.o \
+	$(BUILD)/idt.o \
+	$(BUILD)/irq.o \
+	$(BUILD)/idt_flush.o \
+	$(BUILD)/irq_asm.o
+
 
 KERNEL_ELF := $(BUILD)/kernel.elf
 
@@ -64,6 +71,26 @@ $(BUILD)/ports.o: cpu/ports.c
 $(BUILD)/string.o: lib/string.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -c lib/string.c -o $(BUILD)/string.o
+
+$(BUILD)/isr.o: cpu/isr.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/idt.o: cpu/idt.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/irq.o: cpu/irq.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/idt_flush.o: cpu/idt_flush.asm
+	mkdir -p $(BUILD)
+	$(AS) -f elf32 $< -o $@
+
+$(BUILD)/irq_asm.o: cpu/irq.asm
+	mkdir -p $(BUILD)
+	$(AS) -f elf32 $< -o $@
 
 # === LINK ELF KERNEL ===
 $(KERNEL_ELF): $(KERNEL_OBJ)

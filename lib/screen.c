@@ -1,8 +1,5 @@
 #include "screen.h"
-
-static inline void outb(uint16_t port, uint8_t val) {
-    __asm__ volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
-}
+#include "../cpu/ports.h"
 
 static uint16_t* const video_memory = (uint16_t*) 0xB8000;
 static uint8_t cursor_row = 0;
@@ -16,8 +13,8 @@ static uint8_t cursor_col = 0;
 #define WHITE_ON_BLACK 0x0F
 
 int get_cursor_offset() {
-    port_byte_out(0x3D4, 14); // Tell VGA control register: we're accessing the high byte
-    int offset = port_byte_in(0x3D5) << 8; // Get the high byte
+    outb(0x3D4, 14); // Tell VGA control register: we're accessing the high byte
+    int offset = inb(0x3D5) << 8; // Get the high byte
     port_byte_out(0x3D4, 15); // Now low byte
     offset += port_byte_in(0x3D5);
     return offset * 2; // Position * 2 (because each char uses 2 bytes)
@@ -25,7 +22,7 @@ int get_cursor_offset() {
 
 void set_cursor_offset(int offset) {
     offset /= 2;
-    port_byte_out(0x3D4, 14);
+    outb(0x3D4, 14);
     port_byte_out(0x3D5, (uint8_t)(offset >> 8));
     port_byte_out(0x3D4, 15);
     port_byte_out(0x3D5, (uint8_t)(offset & 0xFF));
@@ -68,7 +65,7 @@ void print_char(char c) {
     update_cursor();
 }
 
-void print(const char* str) {
+void kprint(const char* str) {
     for (int i = 0; str[i] != '\0'; i++) {
         print_char(str[i]);
     }

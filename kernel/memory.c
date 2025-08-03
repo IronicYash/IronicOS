@@ -1,5 +1,6 @@
 #include "memory.h"
 #include <stdint.h>
+#include "../cpu/ports.h"
 
 #define HEAP_START 0x10000
 #define HEAP_SIZE  0x10000  // 64 KB heap size

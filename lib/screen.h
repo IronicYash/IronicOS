@@ -16,7 +16,7 @@
 int get_cursor_offset();
 void set_cursor_offset(int offset);
 void clear_screen();
-void print(const char* str);
+void kprint(const char* str);
 void print_char(char c);
 void new_line();
 void print_backspace(); 

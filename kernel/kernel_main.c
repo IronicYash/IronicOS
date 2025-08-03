@@ -3,6 +3,10 @@
 #include "../lib/keyboard.h"
 #include "memory.h"
 #include "../lib/string.h"
+#include "../cpu/irq.h"
+#include "../cpu/isr.h"
+#include "../cpu/idt.h"
+
 
 __attribute__((section(".multiboot")))
 const unsigned int multiboot_header[] = {
@@ -14,12 +18,18 @@ const unsigned int multiboot_header[] = {
 
 void kernel_main() {
     clear_screen();
-    print("IronicOS Kernel Booted Successfully!\n");
-    init_memory();
-    init_keyboard();
-    run_shell();
-    
-    // This point should never be reached in a real OS
+
+    kprint("Welcome to IronicOS!\n");
+    kprint("Initializing system...\n");
+
+    isr_install();         // Setup ISRs (exceptions 0-31)
+    irq_install();         // Setup IRQs (32-47)
+    init_keyboard();       // Enable keyboard handler (IRQ1)
+
+    kprint("System initialized successfully.\n");
+    kprint("Type something on the keyboard...\n");
+
+    // Infinite loop to keep kernel running
     while (1) {
         __asm__ __volatile__("hlt");
     }
