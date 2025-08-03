@@ -1,83 +1,24 @@
 [BITS 32]
-[EXTERN isr_handler]
 
-%macro ISR_NOERR 1
-global isr%1
-isr%1:
-    cli
-    push 0              ; Dummy error code
-    push %1             ; Interrupt number
-    jmp isr_common_stub
-%endmacro
+[GLOBAL _start]           ; Entry point symbol expected by linker
+[EXTERN kernel_main]      ; C kernel entry point
 
-%macro ISR_ERR 1
-global isr%1
-isr%1:
-    cli
-    push %1             ; Interrupt number
-    jmp isr_common_stub
-%endmacro
+section .text
+_start:
+    cli                   ; Disable interrupts while setting up
 
-; ISRs without error code
-ISR_NOERR 0
-ISR_NOERR 1
-ISR_NOERR 2
-ISR_NOERR 3
-ISR_NOERR 4
-ISR_NOERR 5
-ISR_NOERR 6
-ISR_NOERR 7
-ISR_NOERR 9
-ISR_NOERR 10
-ISR_NOERR 11
-ISR_NOERR 12
-ISR_NOERR 13
-ISR_NOERR 14
-ISR_NOERR 16
-ISR_NOERR 17
-ISR_NOERR 18
-ISR_NOERR 19
-ISR_NOERR 20
-ISR_NOERR 21
-ISR_NOERR 22
-ISR_NOERR 23
-ISR_NOERR 24
-ISR_NOERR 25
-ISR_NOERR 26
-ISR_NOERR 27
-ISR_NOERR 28
-ISR_NOERR 29
-ISR_NOERR 30
-ISR_NOERR 31
+    ; Set up stack pointer
+    mov esp, stack_top
 
-; ISRs with error code (8, 15 are reserved/faults with error code)
-ISR_ERR 8
-ISR_ERR 15
+    ; Call into the C kernel
+    call kernel_main
 
-global isr_common_stub
-isr_common_stub:
-    pusha                  ; Save general purpose registers
-    push ds
-    push es
-    push fs
-    push gs
+.hang:
+    hlt                   ; Halt if kernel_main ever returns
+    jmp .hang
 
-    mov ax, 0x10           ; Load kernel data segment
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-
-    push esp               ; Pass pointer to registers struct
-    call isr_handler
-    add esp, 4             ; Clean up stack (esp pushed)
-
-    pop gs
-    pop fs
-    pop es
-    pop ds
-    popa
-
-    add esp, 8             ; Remove error code and interrupt number
-    sti
-    iret
+section .bss
+align 4
+resb 4096                 ; 4 KB kernel stack
+stack_bottom:
+stack_top:

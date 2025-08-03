@@ -1,4 +1,6 @@
 [BITS 32]
+
+; Export IRQ labels to C
 GLOBAL irq0
 GLOBAL irq1
 GLOBAL irq2
@@ -15,7 +17,9 @@ GLOBAL irq12
 GLOBAL irq13
 GLOBAL irq14
 GLOBAL irq15
-[EXTERN irq_handler]
+
+; Reference to external IRQ handler (written in C)
+EXTERN irq_handler
 
 ; Save CPU state
 %macro SAVE_REGS 0
@@ -33,20 +37,22 @@ GLOBAL irq15
     pop es
     pop ds
     popa
-    add esp, 4     ; Pop error code placeholder (0 for IRQs)
+    add esp, 8         ; Pop IRQ number + dummy error code
     iret
 %endmacro
 
-; General IRQ stub
+; Define an IRQ handler stub
 %macro DEFINE_IRQ 1
 irq%1:
-    push 0              ; Push dummy error code
-    push %1             ; Push IRQ number
+    cli
+    push 0              ; Dummy error code
+    push %1             ; IRQ number
     SAVE_REGS
     call irq_handler
     RESTORE_REGS
 %endmacro
 
+; Define all 16 IRQs
 DEFINE_IRQ 0
 DEFINE_IRQ 1
 DEFINE_IRQ 2

@@ -31,7 +31,8 @@ KERNEL_OBJ := \
 	$(BUILD)/idt.o \
 	$(BUILD)/irq.o \
 	$(BUILD)/idt_flush.o \
-	$(BUILD)/irq_asm.o
+	$(BUILD)/irq_asm.o \
+	$(BUILD)/isr_asm.o \
 
 
 KERNEL_ELF := $(BUILD)/kernel.elf
@@ -91,6 +92,10 @@ $(BUILD)/idt_flush.o: cpu/idt_flush.asm
 $(BUILD)/irq_asm.o: cpu/irq.asm
 	mkdir -p $(BUILD)
 	$(AS) -f elf32 $< -o $@
+
+$(BUILD)/isr_asm.o: cpu/isr.asm
+	mkdir -p $(BUILD)
+	$(AS) -f elf32 $< -o $@	
 
 # === LINK ELF KERNEL ===
 $(KERNEL_ELF): $(KERNEL_OBJ)

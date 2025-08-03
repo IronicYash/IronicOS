@@ -4,7 +4,7 @@
 #include "idt.h"
 #include "ports.h"
 
-isr_handler_t interrupt_handlers[256];  // Can be used for ISRs and IRQs
+isr_handler_t interrupt_handlers[256] = { 0 };  // Can be used for ISRs and IRQs
 
 const char *exception_messages[] = {
     "Division By Zero", "Debug", "Non Maskable Interrupt", "Breakpoint",
@@ -17,12 +17,15 @@ const char *exception_messages[] = {
     "Reserved", "Reserved", "Reserved", "Reserved"
 };
 
+extern void isr0();
+
 void isr_install() {
+    set_idt_gate(0, (uint32_t)isr0);
     idt_init();  // Initialize and load the IDT
 }
 
 void isr_handler(registers_t *regs) {
-    if (interrupt_handlers[regs->int_no] != 0) {
+    if (regs->int_no < 256 && interrupt_handlers[regs->int_no] != 0) {
         isr_handler_t handler = interrupt_handlers[regs->int_no];
         handler(regs);
     } else {
