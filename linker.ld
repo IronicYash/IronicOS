@@ -1,27 +1,29 @@
+/* linker.ld - tells the linker how to organize our kernel binary */
+OUTPUT_FORMAT(elf32-i386)
 ENTRY(_start)
 
-SECTIONS {
-  . = 1M;
+SECTIONS
+{
+    . = 1M;  /* Load kernel at 1MB */
 
-  /* Multiboot2 header must be within the first 32 KiB */
-  .multiboot_header ALIGN(8) : {
-    KEEP(*(.multiboot_header))
-  }
+    .multiboot ALIGN(8) : {
+        KEEP(*(.multiboot))
+    }
 
-  .text ALIGN(4K) : {
-    *(.text*)
-  }
+    .text ALIGN(4K) : {
+        *(.text*)
+    }
 
-  .rodata ALIGN(4K) : {
-    *(.rodata*)
-  }
+    .rodata ALIGN(4K) : {
+        *(.rodata*)
+    }
 
-  .data ALIGN(4K) : {
-    *(.data*)
-  }
+    .data ALIGN(4K) : {
+        *(.data*)
+    }
 
-  .bss ALIGN(4K) : {
-    *(COMMON)
-    *(.bss*)
-  }
+    .bss ALIGN(4K) : {
+        *(COMMON)
+        *(.bss*)
+    }
 }

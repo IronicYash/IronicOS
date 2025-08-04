@@ -1,55 +1,30 @@
-#include "../lib/screen.h"  // For kprint()
-#include "../lib/string.h"
 #include "isr.h"
 #include "idt.h"
-#include "ports.h"
+#include "../lib/screen.h"
 
-isr_handler_t interrupt_handlers[256] = { 0 };  // Can be used for ISRs and IRQs
+extern void isr_stub_table(); // All 32 ISR stubs defined in ASM
+extern void* isr_stub_table[32];
 
-const char *exception_messages[] = {
-    "Division By Zero", "Debug", "Non Maskable Interrupt", "Breakpoint",
-    "Into Detected Overflow", "Out of Bounds", "Invalid Opcode", "No Coprocessor",
-    "Double Fault", "Coprocessor Segment Overrun", "Bad TSS", "Segment Not Present",
-    "Stack Fault", "General Protection Fault", "Page Fault", "Unknown Interrupt",
-    "Coprocessor Fault", "Alignment Check", "Machine Check", "Reserved",
-    "Reserved", "Reserved", "Reserved", "Reserved",
-    "Reserved", "Reserved", "Reserved", "Reserved",
-    "Reserved", "Reserved", "Reserved", "Reserved"
-};
-
-extern void isr0();
+isr_t interrupt_handlers[256];
 
 void isr_install() {
-    set_idt_gate(0, (uint32_t)isr0);
-    idt_init();  // Initialize and load the IDT
+    extern void* isr_stub_table[];
+
+    for (int i = 0; i < ISR_COUNT; i++) {
+        idt_set_gate(i, (uint32_t)isr_stub_table[i], 0x08, 0x8E);
+    }
 }
 
-void isr_handler(registers_t *regs) {
-    if (regs->int_no < 256 && interrupt_handlers[regs->int_no] != 0) {
-        isr_handler_t handler = interrupt_handlers[regs->int_no];
-        handler(regs);
+void register_interrupt_handler(uint8_t n, isr_t handler) {
+    interrupt_handlers[n] = handler;
+}
+
+void isr_handler(registers_t regs) {
+    if (interrupt_handlers[regs.int_no]) {
+        interrupt_handlers[regs.int_no](regs);
     } else {
-        kprint("Unhandled Exception: ");
-        kprint(exception_messages[regs->int_no]);
-        kprint("\nSystem Halted!\n");
-        while (1) __asm__ __volatile__("hlt");
-    }
-}
-
-void isr_register_handler(uint8_t n, isr_handler_t handler) {
-    if (n < 256) {
-        interrupt_handlers[n] = handler;
-    }
-}
-
-void isr_unregister_handler(uint8_t n) {
-    if (n < 256) {
-        interrupt_handlers[n] = 0;
-    }
-}
-
-void isr_set_handler(int n, isr_handler_t handler) {
-    if (n < 256) {
-        interrupt_handlers[n] = handler;
+        kprint("Unhandled CPU Exception: ");
+        kprint_dec(regs.int_no);
+        kprint("\n");
     }
 }

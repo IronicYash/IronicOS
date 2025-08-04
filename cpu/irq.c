@@ -1,97 +1,44 @@
 #include "irq.h"
 #include "idt.h"
-#include "ports.h"
-#include "../lib/screen.h"
+#include "../lib/ports.h"
 
-// Array to store custom IRQ handlers
-irq_handler_t irq_handlers[16] = { 0 };
+#define IRQ_BASE 32
+#define PIC1 0x20
+#define PIC2 0xA0
+#define PIC1_COMMAND PIC1
+#define PIC1_DATA (PIC1+1)
+#define PIC2_COMMAND PIC2
+#define PIC2_DATA (PIC2+1)
+#define PIC_EOI 0x20
 
 void irq_remap() {
-    // Send ICW1
-    outb(0x20, 0x11);
-    outb(0xA0, 0x11);
-
-    // Send ICW2 - Master PIC offset
-    outb(0x21, 0x20);  // Remap IRQs 0-7 to IDT entries 32-39
-    outb(0xA1, 0x28);  // Remap IRQs 8-15 to IDT entries 40-47
-
-    // Send ICW3
-    outb(0x21, 0x04);
-    outb(0xA1, 0x02);
-
-    // Send ICW4
-    outb(0x21, 0x01);
-    outb(0xA1, 0x01);
-
-    // Unmask all interrupts
-    outb(0x21, 0x0);
-    outb(0xA1, 0x0);
+    outb(PIC1_COMMAND, 0x11);
+    outb(PIC2_COMMAND, 0x11);
+    outb(PIC1_DATA, IRQ_BASE);      // Remap PIC1 to 32–39
+    outb(PIC2_DATA, IRQ_BASE + 8);  // Remap PIC2 to 40–47
+    outb(PIC1_DATA, 4);             // Tell PIC1 there is a PIC2 at IRQ2
+    outb(PIC2_DATA, 2);             // Tell PIC2 its cascade identity
+    outb(PIC1_DATA, 0x01);
+    outb(PIC2_DATA, 0x01);
 }
 
-// Install IRQs into the IDT
 void irq_install() {
     irq_remap();
+    extern void* irq_stub_table[];
 
-    extern void irq0();
-    extern void irq1();
-    extern void irq2();
-    extern void irq3();
-    extern void irq4();
-    extern void irq5();
-    extern void irq6();
-    extern void irq7();
-    extern void irq8();
-    extern void irq9();
-    extern void irq10();
-    extern void irq11();
-    extern void irq12();
-    extern void irq13();
-    extern void irq14();
-    extern void irq15();
-
-    set_idt_gate(32, (uint32_t)irq0);
-    set_idt_gate(33, (uint32_t)irq1);
-    set_idt_gate(34, (uint32_t)irq2);
-    set_idt_gate(35, (uint32_t)irq3);
-    set_idt_gate(36, (uint32_t)irq4);
-    set_idt_gate(37, (uint32_t)irq5);
-    set_idt_gate(38, (uint32_t)irq6);
-    set_idt_gate(39, (uint32_t)irq7);
-    set_idt_gate(40, (uint32_t)irq8);
-    set_idt_gate(41, (uint32_t)irq9);
-    set_idt_gate(42, (uint32_t)irq10);
-    set_idt_gate(43, (uint32_t)irq11);
-    set_idt_gate(44, (uint32_t)irq12);
-    set_idt_gate(45, (uint32_t)irq13);
-    set_idt_gate(46, (uint32_t)irq14);
-    set_idt_gate(47, (uint32_t)irq15);
-}
-
-// C entry point for IRQs
-void irq_handler(registers_t *r) {
-    // Call custom handler if registered
-    uint8_t irq = r->int_no - IRQ_BASE;
-    if (irq < 16 && irq_handlers[irq]) {
-        irq_handlers[irq](r);
-    }
-
-    // Send End of Interrupt (EOI) to the PICs
-    if (r->int_no >= 40) {
-        outb(0xA0, 0x20);  // Slave PIC
-    }
-    outb(0x20, 0x20);      // Master PIC
-}
-
-// Register a handler for a specific IRQ
-void irq_register_handler(uint8_t irq, irq_handler_t handler) {
-    if (irq < 16) {
-        irq_handlers[irq] = handler;
+    for (int i = 0; i < 16; i++) {
+        idt_set_gate(IRQ_BASE + i, (uint32_t)irq_stub_table[i], 0x08, 0x8E);
     }
 }
 
-// Unregister handler
-void irq_unregister_handler(uint8_t irq) {
-    if (irq < 16) {
-        irq_handlers[irq] = 0;
+void irq_handler(registers_t regs) {
+    if (regs.int_no >= IRQ_BASE && interrupt_handlers[regs.int_no]) {
+        interrupt_handlers[regs.int_no](regs);
     }
+
+    // Send EOI
+    if (regs.int_no >= IRQ_BASE + 8)
+        outb(PIC2_COMMAND, PIC_EOI);
+
+    outb(PIC1_COMMAND, PIC_EOI);
 }

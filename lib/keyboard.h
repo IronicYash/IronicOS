@@ -1,6 +1,9 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-void init_keyboard();
+#include <stdint.h>
+
+// Initialize keyboard driver (IRQ 1)
+void keyboard_init();
 
 #endif

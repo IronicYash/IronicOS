@@ -36,11 +36,41 @@ make run
 
 ```bash
 .
-├── boot/           # Bootloader (boot.asm)
-├── build/          # Compiled object files and binaries
-├── kernel/         # C source code for kernel
-├── isodir/         # ISO layout with GRUB bootloader
-├── linker.ld       # Linker script
-├── grub.cfg        # GRUB menu configuration
-├── Makefile        # Automated build process
-└── IronicOS.iso    # Output bootable ISO
+├IronicOS/
+├── Makefile
+├── linker.ld
+├── grub.cfg
+
+├── build/                   # <== Compiled .o and kernel.elf go here
+│   └── (auto-generated)
+
+├── isodir/                  # <== ISO build directory
+│   └── boot/
+│       ├── grub/
+│       │   └── grub.cfg
+│       └── kernel.elf
+
+├── kernel/
+│   ├── entry.asm
+│   ├── multiboot_header.asm
+│   └── kernel_main.c
+
+├── cpu/
+│   ├── idt.c
+│   ├── idt.h
+│   ├── irq.c
+│   ├── irq.h
+│   ├── irq.asm
+│   ├── isr.c
+│   ├── isr.h
+│   └── isr.asm
+
+├── lib/
+│   ├── screen.c
+│   ├── screen.h
+│   ├── keyboard.c
+│   ├── keyboard.h
+│   ├── timer.c
+│   ├── timer.h
+│   └── ports.h              # <== Required for I/O port access
+

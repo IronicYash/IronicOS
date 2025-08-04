@@ -1,71 +1,63 @@
-[BITS 32]
+; irq.asm - Hardware IRQ stubs (32-47)
 
-; Export IRQ labels to C
-GLOBAL irq0
-GLOBAL irq1
-GLOBAL irq2
-GLOBAL irq3
-GLOBAL irq4
-GLOBAL irq5
-GLOBAL irq6
-GLOBAL irq7
-GLOBAL irq8
-GLOBAL irq9
-GLOBAL irq10
-GLOBAL irq11
-GLOBAL irq12
-GLOBAL irq13
-GLOBAL irq14
-GLOBAL irq15
+[bits 32]
+[extern irq_handler]
 
-; Reference to external IRQ handler (written in C)
-EXTERN irq_handler
+%macro IRQ 1
+global irq%1
+irq%1:
+    cli
+    push dword 0         ; IRQs don’t push error code
+    push dword (32 + %1)
+    jmp common_irq_stub
+%endmacro
 
-; Save CPU state
-%macro SAVE_REGS 0
+section .text
+
+common_irq_stub:
     pusha
     push ds
     push es
     push fs
     push gs
-%endmacro
 
-; Restore CPU state
-%macro RESTORE_REGS 0
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    call irq_handler
+
     pop gs
     pop fs
     pop es
     pop ds
     popa
-    add esp, 8         ; Pop IRQ number + dummy error code
-    iret
-%endmacro
 
-; Define an IRQ handler stub
-%macro DEFINE_IRQ 1
-irq%1:
-    cli
-    push 0              ; Dummy error code
-    push %1             ; IRQ number
-    SAVE_REGS
-    call irq_handler
-    RESTORE_REGS
-%endmacro
+    add esp, 8           ; Clean error code and int number
+    sti
+    iret
 
 ; Define all 16 IRQs
-DEFINE_IRQ 0
-DEFINE_IRQ 1
-DEFINE_IRQ 2
-DEFINE_IRQ 3
-DEFINE_IRQ 4
-DEFINE_IRQ 5
-DEFINE_IRQ 6
-DEFINE_IRQ 7
-DEFINE_IRQ 8
-DEFINE_IRQ 9
-DEFINE_IRQ 10
-DEFINE_IRQ 11
-DEFINE_IRQ 12
-DEFINE_IRQ 13
-DEFINE_IRQ 14
-DEFINE_IRQ 15
+IRQ 0
+IRQ 1
+IRQ 2
+IRQ 3
+IRQ 4
+IRQ 5
+IRQ 6
+IRQ 7
+IRQ 8
+IRQ 9
+IRQ 10
+IRQ 11
+IRQ 12
+IRQ 13
+IRQ 14
+IRQ 15
+
+global irq_stub_table
+irq_stub_table:
+    dd irq0, irq1, irq2, irq3, irq4, irq5, irq6, irq7
+    dd irq8, irq9, irq10, irq11, irq12, irq13, irq14, irq15

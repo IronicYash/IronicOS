@@ -1,36 +1,21 @@
-#include "kernel.h"
 #include "../lib/screen.h"
 #include "../lib/keyboard.h"
-#include "memory.h"
-#include "../lib/string.h"
-#include "../cpu/irq.h"
-#include "../cpu/isr.h"
+#include "../lib/timer.h"
+#include "../lib/io.h"
 #include "../cpu/idt.h"
+#include "../cpu/isr.h"
+#include "../cpu/irq.h"
 
-
-__attribute__((section(".multiboot")))
-const unsigned int multiboot_header[] = {
-    0xe85250d6,    // magic number (Multiboot2)
-    0,             // architecture (0 = i386)
-    0,             // header length (filled by linker)
-    -(0xe85250d6 + 0 + 0) // checksum
-};
 
 void kernel_main() {
     clear_screen();
+    print("Welcome to IronicOS!\n");
 
-    kprint("Welcome to IronicOS!\n");
-    kprint("Initializing system...\n");
+    idt_init();         // Setup IDT
+    isr_install();      // Setup ISRs
+    irq_install();      // Setup IRQs
+    keyboard_init();    // Enable keyboard interrupt
+    
+    init_timer(100);    // Initialize timer at 100 Hz
 
-    isr_install();         // Setup ISRs (exceptions 0-31)
-    irq_install();         // Setup IRQs (32-47)
-    init_keyboard();       // Enable keyboard handler (IRQ1)
-
-    kprint("System initialized successfully.\n");
-    kprint("Type something on the keyboard...\n");
-
-    // Infinite loop to keep kernel running
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
 }

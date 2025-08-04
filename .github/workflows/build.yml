@@ -17,7 +17,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential nasm xorriso grub-pc-bin qemu-utils mtools
+        sudo apt install -y build-essential nasm xorriso grub-pc-bin qemu-utils mtools 
 
     - name: Build ISO
       run: |
