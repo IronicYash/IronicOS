@@ -5,7 +5,8 @@ LD      := i686-elf-ld
 OBJCOPY := i686-elf-objcopy
 
 # === Flags ===
-CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pic -fno-builtin -nostdlib
+CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
+           -fno-stack-protector -fno-pic -fno-builtin -nostdlib
 LDFLAGS := -T linker.ld -nostdlib
 
 # === Directories ===
@@ -47,26 +48,26 @@ $(BUILD_DIR)/%_asm.o: %.asm
 	mkdir -p $(dir $@)
 	$(AS) -f elf32 $< -o $@
 
-#make iso
-iso: build/kernel.elf
-	mkdir -p isodir/boot/grub
-	# Copy grub.cfg from grub/ directory (or create a minimal one if not found)
-	if [ -f grub/grub.cfg ]; then \
-	    cp grub/grub.cfg isodir/boot/grub/; \
+# === Create ISO ===
+iso: all
+	mkdir -p $(GRUB_DIR)
+	@if [ -f grub/grub.cfg ]; then \
+	    cp grub/grub.cfg $(GRUB_DIR)/; \
 	elif [ -f grub.cfg ]; then \
-	    cp grub.cfg isodir/boot/grub/; \
+	    cp grub.cfg $(GRUB_DIR)/; \
 	else \
-	    echo 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > isodir/boot/grub/grub.cfg; \
+	    echo 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > $(GRUB_DIR)/grub.cfg; \
+	    echo "[INFO] No grub.cfg found, created default one."; \
 	fi
-	cp build/kernel.elf isodir/boot/
-	grub-mkrescue -o IronicOS.iso isodir
+	cp $(BUILD_DIR)/kernel.elf $(ISO_DIR)/boot/
+	grub-mkrescue -o IronicOS.iso $(ISO_DIR)
 
-# QEMU run
+# === QEMU Run ===
 run: iso
 	qemu-system-i386 -cdrom IronicOS.iso
 
-# Clean
+# === Clean ===
 clean:
-	rm -rf $(BUILD_DIR) isodir IronicOS.iso
+	rm -rf $(BUILD_DIR) $(ISO_DIR) IronicOS.iso
 
 .PHONY: all clean run iso

@@ -1,10 +1,10 @@
-name: Build IronicOS
- 
+name: Build ISO
+
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build:
@@ -17,12 +17,32 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential nasm xorriso grub-pc-bin qemu-utils mtools 
+        sudo apt install -y nasm xorriso grub-pc-bin qemu-system-x86
+
+        # Build i686-elf-gcc cross-compiler
+        sudo apt install -y build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo
+        mkdir -p $HOME/src
+        cd $HOME/src
+        wget https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz
+        tar -xf binutils-2.40.tar.xz
+        mkdir binutils-build
+        cd binutils-build
+        ../binutils-2.40/configure --target=i686-elf --prefix=/usr/local --with-sysroot --disable-nls --disable-werror
+        make -j$(nproc)
+        sudo make install
+
+        cd $HOME/src
+        wget https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
+        tar -xf gcc-13.2.0.tar.xz
+        mkdir gcc-build
+        cd gcc-build
+        ../gcc-13.2.0/configure --target=i686-elf --prefix=/usr/local --disable-nls --enable-languages=c --without-headers
+        make all-gcc -j$(nproc)
+        make all-target-libgcc -j$(nproc)
+        sudo make install
 
     - name: Build ISO
-      run: |
-        make
+      run: make iso
 
     - name: Show ISO file
-      run: |
-        ls -lh IronicOS.iso
+      run: ls -lh IronicOS.iso
