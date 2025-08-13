@@ -1,3 +1,7 @@
+# =========================
+# IronicOS Production Makefile
+# =========================
+
 # === Toolchain ===
 AS      := nasm
 CC      := i686-elf-gcc
@@ -18,7 +22,7 @@ GRUB_DIR  := $(ISO_DIR)/boot/grub
 C_SOURCES := \
 	kernel/kernel_main.c \
 	cpu/idt.c cpu/isr.c cpu/irq.c \
-	lib/screen.c lib/keyboard.c lib/string.c lib/timer.c lib/shell.c
+	lib/screen.c lib/keyboard.c lib/string.c lib/timer.c lib/shell.c lib/serial.c
 
 ASM_SOURCES := \
 	kernel/multiboot_header.asm \
@@ -32,25 +36,38 @@ C_OBJS   := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_SOURCES))
 ASM_OBJS := $(patsubst %.asm, $(BUILD_DIR)/%_asm.o, $(ASM_SOURCES))
 OBJS     := $(C_OBJS) $(ASM_OBJS)
 
-# === Targets ===
+# =========================
+# Build Targets
+# =========================
+
 all: $(BUILD_DIR)/kernel.elf
 
+# Link kernel
 $(BUILD_DIR)/kernel.elf: $(OBJS)
+	@mkdir -p $(dir $@)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+	@echo "[OK] Kernel linked -> $@"
 
 # Compile C files
 $(BUILD_DIR)/%.o: %.c
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "[OK] Compiled C -> $<"
 
 # Assemble ASM files
 $(BUILD_DIR)/%_asm.o: %.asm
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(AS) -f elf32 $< -o $@
+	@echo "[OK] Assembled ASM -> $<"
 
-# === Create ISO ===
-iso: all
-	mkdir -p $(GRUB_DIR)
+# =========================
+# ISO Creation
+# =========================
+
+iso: $(BUILD_DIR)/kernel.elf
+	@echo "[INFO] Creating ISO directory structure..."
+	@mkdir -p $(GRUB_DIR)
+	@cp $(BUILD_DIR)/kernel.elf $(ISO_DIR)/boot/
 	@if [ -f grub/grub.cfg ]; then \
 	    cp grub/grub.cfg $(GRUB_DIR)/; \
 	elif [ -f grub.cfg ]; then \
@@ -59,15 +76,25 @@ iso: all
 	    echo 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > $(GRUB_DIR)/grub.cfg; \
 	    echo "[INFO] No grub.cfg found, created default one."; \
 	fi
-	cp $(BUILD_DIR)/kernel.elf $(ISO_DIR)/boot/
-	grub-mkrescue -o IronicOS.iso $(ISO_DIR)
+	@echo "[INFO] Building ISO image..."
+	grub-mkrescue -o IronicOS.iso $(ISO_DIR) --directory=/usr/lib/grub/i386-pc
+	@ls -lh IronicOS.iso
+	@echo "[OK] ISO created -> IronicOS.iso"
 
-# === QEMU Run ===
+# =========================
+# QEMU Run
+# =========================
+
 run: iso
+	@echo "[INFO] Running in QEMU..."
 	qemu-system-i386 -cdrom IronicOS.iso
 
-# === Clean ===
+# =========================
+# Cleanup
+# =========================
+
 clean:
+	@echo "[INFO] Cleaning build files..."
 	rm -rf $(BUILD_DIR) $(ISO_DIR) IronicOS.iso
 
 .PHONY: all clean run iso
