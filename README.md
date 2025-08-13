@@ -35,42 +35,36 @@ make run
 ## 📂 Project Structure
 
 ```bash
-.
-├IronicOS/
-├── Makefile
-├── linker.ld
-├── grub.cfg
 
-├── build/                   # <== Compiled .o and kernel.elf go here
-│   └── (auto-generated)
-
-├── isodir/                  # <== ISO build directory
+.IronicOS/
+├── Makefile                # Main build file (supports make, make iso, make run, make clean)
+├── linker.ld                # Linker script for kernel
+├── .gitignore               # Ignore build artifacts & temp files
+├── .gitattributes           # GitHub syntax highlighting & LF line ending rules
+├── .editorconfig            # Editor formatting rules
+├── grub/
+│   └── grub.cfg             # GRUB boot menu configuration (copied into ISO at build time)
+├── build/                   # (Generated) Compiled object files and kernel.elf
+├── isodir/                  # (Generated) ISO root directory
 │   └── boot/
-│       ├── grub/
-│       │   └── grub.cfg
-│       └── kernel.elf
-
+│       ├── kernel.elf       # Compiled kernel binary
+│       └── grub/
+│           └── grub.cfg     # GRUB config inside ISO
 ├── kernel/
-│   ├── entry.asm
-│   ├── multiboot_header.asm
-│   └── kernel_main.c
-
+│   ├── kernel_main.c        # Kernel entry point (after assembly boot)
+│   ├── entry.asm            # Early assembly entry point (sets up stack, jumps to C)
+│   └── multiboot_header.asm # Multiboot header for GRUB
 ├── cpu/
-│   ├── idt.c
-│   ├── idt.h
-│   ├── irq.c
-│   ├── irq.h
-│   ├── irq.asm
-│   ├── isr.c
-│   ├── isr.h
-│   └── isr.asm
-
+│   ├── idt.c / idt.h        # Interrupt Descriptor Table setup
+│   ├── idt_load.asm         # Assembly helper to load IDT
+│   ├── isr.c / isr.h        # Interrupt Service Routines (CPU exceptions)
+│   ├── isr.asm              # ISR stubs in assembly
+│   ├── irq.c / irq.h        # IRQ handlers (hardware interrupts)
+│   └── irq.asm              # IRQ stubs in assembly
 ├── lib/
-│   ├── screen.c
-│   ├── screen.h
-│   ├── keyboard.c
-│   ├── keyboard.h
-│   ├── timer.c
-│   ├── timer.h
-│   └── ports.h              # <== Required for I/O port access
-
+│   ├── screen.c / screen.h  # VGA text mode output
+│   ├── keyboard.c / keyboard.h # PS/2 keyboard input handling
+│   ├── string.c / string.h  # Basic string/memory functions
+│   ├── timer.c / timer.h    # PIT timer handling
+│   └── shell.c / shell.h    # Simple kernel shell
+└── memory/                  # (Future) Memory management code

@@ -1,4 +1,4 @@
-name: Build ISO
+name: Build IronicOS ISO
 
 on:
   push:
@@ -11,38 +11,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Install Dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y nasm xorriso grub-pc-bin qemu-system-x86
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo grub-pc-bin xorriso qemu-system-x86 nasm
 
-        # Build i686-elf-gcc cross-compiler
-        sudo apt install -y build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo
-        mkdir -p $HOME/src
-        cd $HOME/src
-        wget https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz
-        tar -xf binutils-2.40.tar.xz
-        mkdir binutils-build
-        cd binutils-build
-        ../binutils-2.40/configure --target=i686-elf --prefix=/usr/local --with-sysroot --disable-nls --disable-werror
-        make -j$(nproc)
-        sudo make install
+      - name: Build and Install Cross Compiler (C or C++)
+        run: |
+          set -e
 
-        cd $HOME/src
-        wget https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
-        tar -xf gcc-13.2.0.tar.xz
-        mkdir gcc-build
-        cd gcc-build
-        ../gcc-13.2.0/configure --target=i686-elf --prefix=/usr/local --disable-nls --enable-languages=c --without-headers
-        make all-gcc -j$(nproc)
-        make all-target-libgcc -j$(nproc)
-        sudo make install
+          # ===== Configuration =====
+          GCC_VERSION=13.2.0
+          TARGET=i686-elf
+          PREFIX="$HOME/opt/cross"
+          BUILD_CXX=false   # Change to 'true' to build with C++ support
 
-    - name: Build ISO
-      run: make iso
+          mkdir -p gcc-build
+          cd gcc-build
 
-    - name: Show ISO file
-      run: ls -lh IronicOS.iso
+          if [ "$BUILD_CXX" = true ]; then
+            LANGS="c,c++"
+          else
+            LANGS="c"
+          fi
+
+          # Download GCC if not in repo
+          if [ ! -d "../gcc-$GCC_VERSION" ]; then
+            wget https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz
+            tar -xf gcc-$GCC_VERSION.tar.gz -C ..
+          fi
+
+          ../gcc-$GCC_VERSION/configure \
+            --target=$TARGET \
+            --prefix="$PREFIX" \
+            --disable-nls \
+            --enable-languages=$LANGS \
+            --without-headers
+
+          make all-gcc
+          make all-target-libgcc
+          make install-gcc
+          make install-target-libgcc
+
+          if [ "$BUILD_CXX" = true ]; then
+            make all-target-libstdc++-v3
+            make install-target-libstdc++-v3
+          fi
+
+          echo "$PREFIX/bin" >> $GITHUB_PATH
+
+      - name: Build ISO
+        run: |
+          make clean
+          make iso
+
+      - name: Show ISO file
+        run: ls -lh build/*.iso
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: IronicOS-ISO
+          path: build/*.iso

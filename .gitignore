@@ -1,0 +1,23 @@
+# Build output
+build/
+isodir/
+IronicOS.iso
+
+# Temporary files
+*.o
+*_asm.o
+*.tmp
+*.log
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Editor / IDE configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*~

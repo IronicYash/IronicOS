@@ -1,0 +1,16 @@
+# === Syntax highlighting ===
+*.asm linguist-language=NASM
+*.S   linguist-language=Assembly
+*.ld  linguist-language=Linker Script
+
+# === Line endings ===
+*.c   text eol=lf
+*.h   text eol=lf
+*.asm text eol=lf
+*.ld  text eol=lf
+Makefile text eol=lf
+
+# === Treat ISO and other binaries as binary ===
+*.iso binary
+*.bin binary
+*.img binary
