@@ -17,7 +17,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo grub-pc-bin xorriso qemu-system-x86 nasm
+          sudo apt-get install -y build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo grub-pc-bin xorriso qemu-system-x86 nasm wget
 
       - name: Build and Install Cross Compiler (C or C++)
         run: |
@@ -27,7 +27,7 @@ jobs:
           GCC_VERSION=13.2.0
           TARGET=i686-elf
           PREFIX="$HOME/opt/cross"
-          BUILD_CXX=false   # Change to 'true' to build with C++ support
+          BUILD_CXX=false   # Change to 'true' for C++ support
 
           mkdir -p gcc-build
           cd gcc-build
@@ -38,7 +38,7 @@ jobs:
             LANGS="c"
           fi
 
-          # Download GCC if not in repo
+          # Download GCC if not already present
           if [ ! -d "../gcc-$GCC_VERSION" ]; then
             wget https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz
             tar -xf gcc-$GCC_VERSION.tar.gz -C ..
@@ -72,7 +72,7 @@ jobs:
         run: ls -lh build/*.iso
 
       - name: Upload ISO Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: IronicOS-ISO
           path: build/*.iso
