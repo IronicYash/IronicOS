@@ -1,69 +1,66 @@
 #include "keyboard.h"
-#include "shell.h"
+#include "ports.h"
 #include "screen.h"
-#include "io.h"
-#include "../cpu/irq.h"
+#include "string.h"
+#include <stdint.h>
 
-#define KEYBOARD_DATA_PORT 0x60
+#define KBD_DATA_PORT 0x60
+#define KBD_STATUS_PORT 0x64
 
-// US QWERTY scancode-to-ASCII table (no shift handling for now)
+/* Simple ring buffer */
+#define KB_BUF_SIZE 128
+static volatile char kb_buf[KB_BUF_SIZE];
+static volatile int kb_head = 0, kb_tail = 0;
+
 static const char scancode_to_ascii[128] = {
-    0,  27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b', /* backspace */
-    '\t', /* tab */
-    'q','w','e','r','t','y','u','i','o','p','[',']','\n', /* enter */
-    0, /* control */
-    'a','s','d','f','g','h','j','k','l',';','\'','`',
-    0, /* left shift */
-    '\\','z','x','c','v','b','n','m',',','.','/',
-    0, /* right shift */
-    '*',
-    0, /* alt */
-    ' ', /* space bar */
-    0, /* caps lock */
-    0, /* F1 */
-    0, /* F2 */
-    0, /* F3 */
-    0, /* F4 */
-    0, /* F5 */
-    0, /* F6 */
-    0, /* F7 */
-    0, /* F8 */
-    0, /* F9 */
-    0, /* F10 */
-    0, /* num lock */
-    0, /* scroll lock */
-    0, /* home */
-    0, /* up arrow */
-    0, /* page up */
-    '-',
-    0, /* left arrow */
-    0,
-    0, /* right arrow */
-    '+',
-    0, /* end */
-    0, /* down arrow */
-    0, /* page down */
-    0, /* insert */
-    0, /* delete */
-    0, 0, 0, 0,
-    0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0
+/* 0x00 - 0x0F */
+0, 27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b', '\t',
+/* 0x10 - 0x1F */
+'q','w','e','r','t','y','u','i','o','p','[',']','\n',0,'a','s',
+/* 0x20 - 0x2F */
+'d','f','g','h','j','k','l',';','\'','`',0,'\\','z','x','c','v',
+/* 0x30 - 0x3F */
+'b','n','m',',','.','/',0,'*',0,' ','0',0,0,0,0,0,
+/* rest are zeros */
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-static void keyboard_callback() {
-    uint8_t scancode = inb(KEYBOARD_DATA_PORT);
-
-    if (scancode > 127) return; // ignore key release (for now)
-
-    char ascii = scancode_to_ascii[scancode];
-    if (ascii) {
-        shell_handle_input(ascii); // forward to shell
+void kbd_handle_scancode(void) {
+    uint8_t sc = inb(KBD_DATA_PORT);
+    if (sc & 0x80) {
+        /* key release - ignore for now */
+        return;
     }
-
-    outb(0x20, 0x20); // send EOI to PIC
+    char c = sc < 128 ? scancode_to_ascii[sc] : 0;
+    if (!c) return;
+    int next = (kb_head + 1) % KB_BUF_SIZE;
+    if (next == kb_tail) {
+        /* buffer full - drop */
+        return;
+    }
+    kb_buf[kb_head] = c;
+    kb_head = next;
 }
 
-void keyboard_init() {
-    irq_install_handler(1, keyboard_callback); // IRQ1 = PS/2 keyboard
+void init_keyboard(void) {
+    /* PIC remap + IDT entries must be set; the irq handler should call kbd_handle_scancode.
+       We only ensure keyboard IRQ is enabled here (unmask IRQ1). */
+    /* Unmask IRQ1 (keyboard) - assume PIC is set to remapped offsets */
+    uint8_t mask = inb(0x21);
+    mask &= ~(1 << 1);
+    outb(0x21, mask);
+}
+
+int keyboard_getchar(void) {
+    if (kb_head == kb_tail) return 0;
+    char c = kb_buf[kb_tail];
+    kb_tail = (kb_tail + 1) % KB_BUF_SIZE;
+    return (int)c;
+}
+
+int keyboard_getchar_blocking(void) {
+    int c;
+    while (!(c = keyboard_getchar())) { asm volatile("hlt"); }
+    return c;
 }

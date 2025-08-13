@@ -1,10 +1,12 @@
-#ifndef IO_H
-#define IO_H
+#ifndef IRT_IO_H
+#define IRT_IO_H
 
-#include <stdint.h>
+#include <stdarg.h>
 
-static inline void outb(uint16_t port, uint8_t value) {
-    __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
-}
+/* Minimal printf-like API used around the kernel.
+   Implemented in screen.c; other modules call printf(). */
+void printf(const char *fmt, ...);
+void putchar(char c);
+void clear_screen(void);
 
-#endif
+#endif /* IRT_IO_H */

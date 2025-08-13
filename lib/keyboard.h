@@ -1,9 +1,15 @@
-#ifndef KEYBOARD_H
-#define KEYBOARD_H
+#ifndef IRT_KEYBOARD_H
+#define IRT_KEYBOARD_H
 
 #include <stdint.h>
 
-// Initialize keyboard driver (IRQ 1)
-void keyboard_init();
+/* Initialize PS/2 keyboard (enable IRQ) */
+void init_keyboard(void);
 
-#endif
+/* Non-blocking read of latest character (0 if none) */
+int keyboard_getchar(void);
+
+/* Blocking read (simple polling) */
+int keyboard_getchar_blocking(void);
+
+#endif /* IRT_KEYBOARD_H */

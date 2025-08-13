@@ -1,40 +1,29 @@
 #include "timer.h"
-#include "../cpu/irq.h"
-#include "../cpu/isr.h"
 #include "ports.h"
 #include "screen.h"
+#include <stdint.h>
 
+#define PIT_COMMAND 0x43
 #define PIT_CHANNEL0 0x40
-#define PIT_COMMAND  0x43
-#define PIT_FREQUENCY 1193182
+#define PIT_FREQ 1193182u
 
-static uint32_t tick = 0;
+static volatile uint32_t ticks = 0;
 
-static void timer_callback(registers_t regs) {
-    tick++;
-    // Optional: Uncomment to print tick
-    // kprint("Tick: ");
-    // kprint_dec(tick);
-    // kprint("\n");
+void timer_handler(void *r) {
+    (void)r;
+    ticks++;
 }
 
+/* We'll rely on the irq system to call this handler at IRQ0 */
 void init_timer(uint32_t frequency) {
-    register_interrupt_handler(32, timer_callback);
-
-    uint32_t divisor = PIT_FREQUENCY / frequency;
-
-    outb(PIT_COMMAND, 0x36); // Binary mode, square wave, channel 0
-    outb(PIT_CHANNEL0, (uint8_t)(divisor & 0xFF));         // Low byte
-    outb(PIT_CHANNEL0, (uint8_t)((divisor >> 8) & 0xFF));  // High byte
+    uint32_t divisor = PIT_FREQ / frequency;
+    outb(PIT_COMMAND, 0x36); /* Channel 0, low/high, mode 3 */
+    outb(PIT_CHANNEL0, (uint8_t)(divisor & 0xFF));
+    outb(PIT_CHANNEL0, (uint8_t)((divisor >> 8) & 0xFF));
+    /* Users should register the C-level handler via irq_install_handler(0, timer_handler); */
 }
 
-uint32_t timer_get_ticks() {
-    return tick;
-}
-
-void timer_sleep(uint32_t ticks_to_wait) {
-    uint32_t start = tick;
-    while ((tick - start) < ticks_to_wait) {
-        __asm__ volatile ("hlt");  // Sleep CPU until next interrupt
-    }
+void mdelay(uint32_t ms) {
+    uint32_t target = ticks + (ms / (1000 / 100)); /* rough: assuming 100Hz if set */
+    while (ticks < target) asm volatile("hlt");
 }

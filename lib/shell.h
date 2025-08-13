@@ -1,10 +1,6 @@
-#ifndef SHELL_H
-#define SHELL_H
+#ifndef IRT_SHELL_H
+#define IRT_SHELL_H
 
-void shell_init();
-void shell_prompt();
-void shell_handle_input(char c);
-void shell_execute(const char* input);
-void shell_cmd_help();
+void shell_loop(void);
 
-#endif
+#endif /* IRT_SHELL_H */

@@ -1,15 +1,12 @@
-#ifndef TIMER_H
-#define TIMER_H
+#ifndef IRT_TIMER_H
+#define IRT_TIMER_H
 
 #include <stdint.h>
 
-// Initialize the PIT to a specified frequency (e.g. 100 Hz)
+/* init_timer - set PIT frequency in Hz */
 void init_timer(uint32_t frequency);
 
-// Get number of ticks since boot
-uint32_t timer_get_ticks();
+/* simple sleep (busy/hlt loop) in milliseconds */
+void mdelay(uint32_t ms);
 
-// Sleep for a specific number of ticks
-void timer_sleep(uint32_t ticks);
-
-#endif
+#endif /* IRT_TIMER_H */

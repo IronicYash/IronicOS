@@ -1,63 +1,52 @@
-; irq.asm - Hardware IRQ stubs (32-47)
+; cpu/irq.asm — matches irq.c (irq_dispatch, irq_remap to 32..47)
+[BITS 32]
 
-[bits 32]
-[extern irq_handler]
-
-%macro IRQ 1
-global irq%1
+; We compute IDT vector as 32 + IRQ#
+%macro IRQ_STUB 1
+    global irq%1
 irq%1:
     cli
-    push dword 0         ; IRQs don’t push error code
-    push dword (32 + %1)
-    jmp common_irq_stub
+    push dword 0           ; err_code (dummy)
+    push dword (32+%1)     ; int_no (IDT index after remap)
+    jmp irq_common_stub
 %endmacro
 
-section .text
+extern irq_dispatch
 
-common_irq_stub:
+irq_common_stub:
     pusha
     push ds
-    push es
-    push fs
-    push gs
-
     mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
 
-    call irq_handler
+    mov eax, esp
+    push eax
+    call irq_dispatch      ; C: void irq_dispatch(struct registers* r)
+    add esp, 4
 
-    pop gs
-    pop fs
-    pop es
     pop ds
     popa
-
-    add esp, 8           ; Clean error code and int number
+    add esp, 8             ; drop [int_no, err_code]
     sti
-    iret
+    iretd
 
-; Define all 16 IRQs
-IRQ 0
-IRQ 1
-IRQ 2
-IRQ 3
-IRQ 4
-IRQ 5
-IRQ 6
-IRQ 7
-IRQ 8
-IRQ 9
-IRQ 10
-IRQ 11
-IRQ 12
-IRQ 13
-IRQ 14
-IRQ 15
-
-global irq_stub_table
-irq_stub_table:
-    dd irq0, irq1, irq2, irq3, irq4, irq5, irq6, irq7
-    dd irq8, irq9, irq10, irq11, irq12, irq13, irq14, irq15
+; IRQs 0..15 → IDT 32..47
+IRQ_STUB 0
+IRQ_STUB 1
+IRQ_STUB 2
+IRQ_STUB 3
+IRQ_STUB 4
+IRQ_STUB 5
+IRQ_STUB 6
+IRQ_STUB 7
+IRQ_STUB 8
+IRQ_STUB 9
+IRQ_STUB 10
+IRQ_STUB 11
+IRQ_STUB 12
+IRQ_STUB 13
+IRQ_STUB 14
+IRQ_STUB 15

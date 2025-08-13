@@ -1,90 +1,72 @@
-# ===============================
-#         IronicOS Makefile
-# ===============================
+# === Toolchain ===
+AS      := nasm
+CC      := i686-elf-gcc
+LD      := i686-elf-ld
+OBJCOPY := i686-elf-objcopy
 
-# === Config ===
-TARGET        = kernel.elf
-ISO_NAME      = IronicOS.iso
-BUILD_DIR     = build
-ISO_DIR       = isodir
-GRUB_DIR      = $(ISO_DIR)/boot/grub
+# === Flags ===
+CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra -fno-stack-protector -fno-pic -fno-builtin -nostdlib
+LDFLAGS := -T linker.ld -nostdlib
 
-KERNEL_DIR    = kernel
-CPU_DIR       = cpu
-LIB_DIR       = lib
-
-# === Tools ===
-CC      = i686-elf-gcc
-LD      = i686-elf-ld
-AS      = nasm
-QEMU    = qemu-system-i386
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -m32
-ASFLAGS = -f elf32
-LDFLAGS = -T linker.ld -nostdlib
+# === Directories ===
+BUILD_DIR := build
+ISO_DIR   := isodir
+GRUB_DIR  := $(ISO_DIR)/boot/grub
 
 # === Sources ===
-C_SOURCES  = $(wildcard $(KERNEL_DIR)/*.c $(CPU_DIR)/*.c $(LIB_DIR)/*.c)
-ASM_SOURCES = $(wildcard $(KERNEL_DIR)/*.asm $(CPU_DIR)/*.asm)
-OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(C_SOURCES:.c=.o) $(ASM_SOURCES:.asm=.o)))
+C_SOURCES := \
+	kernel/kernel_main.c \
+	cpu/idt.c cpu/isr.c cpu/irq.c \
+	lib/screen.c lib/keyboard.c lib/string.c lib/timer.c lib/shell.c
 
-# === Default ===
-all: iso
+ASM_SOURCES := \
+	kernel/multiboot_header.asm \
+	kernel/entry.asm \
+	cpu/idt_load.asm \
+	cpu/isr.asm \
+	cpu/irq.asm
 
-# === Compile C Files ===
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c
-	@mkdir -p $(BUILD_DIR)
+# === Object Files ===
+C_OBJS   := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_SOURCES))
+ASM_OBJS := $(patsubst %.asm, $(BUILD_DIR)/%_asm.o, $(ASM_SOURCES))
+OBJS     := $(C_OBJS) $(ASM_OBJS)
+
+# === Targets ===
+all: $(BUILD_DIR)/kernel.elf
+
+$(BUILD_DIR)/kernel.elf: $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+
+# Compile C files
+$(BUILD_DIR)/%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(CPU_DIR)/%.c
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+# Assemble ASM files
+$(BUILD_DIR)/%_asm.o: %.asm
+	mkdir -p $(dir $@)
+	$(AS) -f elf32 $< -o $@
 
-$(BUILD_DIR)/%.o: $(LIB_DIR)/%.c
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+#make iso
+iso: build/kernel.elf
+	mkdir -p isodir/boot/grub
+	# Copy grub.cfg from grub/ directory (or create a minimal one if not found)
+	if [ -f grub/grub.cfg ]; then \
+	    cp grub/grub.cfg isodir/boot/grub/; \
+	elif [ -f grub.cfg ]; then \
+	    cp grub.cfg isodir/boot/grub/; \
+	else \
+	    echo 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > isodir/boot/grub/grub.cfg; \
+	fi
+	cp build/kernel.elf isodir/boot/
+	grub-mkrescue -o IronicOS.iso isodir
 
-# === Assemble ASM Files ===
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm
-	@mkdir -p $(BUILD_DIR)
-	$(AS) $(ASFLAGS) $< -o $@
-
-$(BUILD_DIR)/%.o: $(CPU_DIR)/%.asm
-	@mkdir -p $(BUILD_DIR)
-	$(AS) $(ASFLAGS) $< -o $@
-
-# === Link kernel ===
-$(BUILD_DIR)/$(TARGET): $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^
-
-# === Make ISO ===
-iso: $(BUILD_DIR)/$(TARGET)
-	@mkdir -p $(GRUB_DIR)
-	cp grub.cfg $(GRUB_DIR)/
-	cp $< $(ISO_DIR)/boot/$(TARGET)
-	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
-
-# === Run kernel in QEMU ===
+# QEMU run
 run: iso
-	$(QEMU) -cdrom $(ISO_NAME)
+	qemu-system-i386 -cdrom IronicOS.iso
 
-# === Debug with QEMU GDB ===
-debug: iso
-	$(QEMU) -cdrom $(ISO_NAME) -s -S
-
-# === Clean build and ISO ===
+# Clean
 clean:
-	rm -rf $(BUILD_DIR) $(ISO_NAME) $(ISO_DIR)/boot/$(TARGET)
+	rm -rf $(BUILD_DIR) isodir IronicOS.iso
 
-# === Help ===
-help:
-	@echo "Usage: make [target]"
-	@echo ""
-	@echo "Targets:"
-	@echo "  all       - Build everything (same as make iso)"
-	@echo "  iso       - Build the bootable ISO image"
-	@echo "  run       - Run the OS using QEMU"
-	@echo "  debug     - Run QEMU in GDB debugging mode"
-	@echo "  clean     - Remove build artifacts"
-	@echo "  help      - Show this help message"
-
-.PHONY: all clean iso run debug help
+.PHONY: all clean run iso
