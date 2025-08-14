@@ -26,10 +26,11 @@ jobs:
         mkdir -p ~/opt/cross
         cd ~/opt/cross
         echo "Downloading prebuilt i686-elf cross-compiler..."
-        wget https://github.com/lordmilko/i686-elf-tools/releases/download/12.2.0/i686-elf-tools-linux.tar.gz
+        wget https://github.com/cfenollosa/os-tutorial/releases/download/cc1/i686-elf-tools.tar.gz
         echo "Extracting..."
-        tar -xzf i686-elf-tools-linux.tar.gz --strip-components=1
-        rm i686-elf-tools-linux.tar.gz
+        tar -xzf i686-elf-tools.tar.gz --strip-components=1
+        rm i686-elf-tools.tar.gz
+        echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
 
     - name: Install required packages
       run: |
