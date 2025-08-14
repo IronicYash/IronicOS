@@ -11,52 +11,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Cache cross-compiler
-      uses: actions/cache@v3
-      with:
-        path: ~/opt/cross
-        key: cross-compiler-${{ runner.os }}-prebuilt-v1
+      - name: Cache cross-compiler
+        uses: actions/cache@v3
+        with:
+          path: ~/opt/cross
+          key: cross-compiler-${{ runner.os }}-prebuilt-latest
 
-    - name: Download prebuilt cross-compiler (if not cached)
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p ~/opt/cross
-        cd ~/opt/cross
-        echo "Downloading prebuilt i686-elf cross-compiler..."
-        wget https://github.com/cfenollosa/os-tutorial/releases/download/cc1/i686-elf-tools.tar.gz
-        echo "Extracting..."
-        tar -xzf i686-elf-tools.tar.gz --strip-components=1
-        rm i686-elf-tools.tar.gz
-        echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
+      - name: Download prebuilt cross-compiler (if not cached)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/opt/cross
+          cd ~/opt/cross
+          echo "Fetching latest prebuilt i686-elf toolchain release..."
+          # Grab the latest i686-elf-tools tarball from lordmilko repo
+          # Works as of now—replace x.y.z with the actual latest release tag
+          wget https://github.com/lordmilko/i686-elf-tools/releases/latest/download/i686-elf-tools-linux.tar.gz
+          echo "Extracting toolchain..."
+          tar -xzf i686-elf-tools-linux.tar.gz --strip-components=1
+          rm i686-elf-tools-linux.tar.gz
+          echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
 
-    - name: Install required packages
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          nasm \
-          grub-pc-bin \
-          xorriso \
-          qemu-system-x86 \
-          make \
-          wget \
-          curl
+      - name: Install required packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            nasm \
+            grub-pc-bin \
+            xorriso \
+            qemu-system-x86 \
+            make \
+            wget \
+            curl
 
-    - name: Build ISO
-      run: |
-        make CROSS_PREFIX="$HOME/opt/cross/bin/i686-elf-"
+      - name: Build ISO
+        run: |
+          make CROSS_PREFIX="$HOME/opt/cross/bin/i686-elf-"
 
-    - name: QEMU boot test
-      run: |
-        echo "Booting OS in QEMU..."
-        qemu-system-i386 -cdrom IronicOS.iso -nographic -serial stdio -boot d -no-reboot -no-shutdown &
-        sleep 5
-        pkill -f qemu || true
+      - name: QEMU boot test
+        run: |
+          echo "Booting OS in QEMU..."
+          qemu-system-i386 -cdrom IronicOS.iso -nographic -serial stdio -boot d -no-reboot -no-shutdown &
+          sleep 5
+          pkill -f qemu || true
 
-    - name: Upload ISO Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ironic-os-iso
-        path: IronicOS.iso
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironic-os-iso
+          path: IronicOS.iso
