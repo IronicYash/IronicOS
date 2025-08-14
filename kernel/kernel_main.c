@@ -4,6 +4,7 @@
 #include "../lib/timer.h"
 #include "../lib/shell.h"
 #include "../lib/io.h"
+#include "../lib/serial.h"
 #include "../cpu/idt.h"
 #include "../cpu/isr.h"
 #include "../cpu/irq.h"
@@ -18,7 +19,7 @@ extern void serial_puts(const char *);
 void kernel_main() {
     serial_init();
     serial_puts("IronicOS: kernel_main entered\n");
-    
+
     clear_screen();
     printf("Welcome to IronicOS!\n");
 
@@ -26,7 +27,7 @@ void kernel_main() {
     init_irq();      // Setup ISRs
     init_isr();      // Setup IRQs
     init_keyboard();    // Enable keyboard interrupt
-    
+
     init_timer(100);    // Initialize timer at 100 Hz
 
     shell_loop();       // Initialize the shell
