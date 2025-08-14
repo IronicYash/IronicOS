@@ -3,10 +3,11 @@
 # =========================
 
 # === Toolchain ===
+CROSS_PREFIX ?= $(HOME)/opt/cross/bin/i686-elf-
 AS      := nasm
-CC      := i686-elf-gcc
-LD      := i686-elf-ld
-OBJCOPY := i686-elf-objcopy
+CC      := $(CROSS_PREFIX)gcc
+LD      := $(CROSS_PREFIX)ld
+OBJCOPY := $(CROSS_PREFIX)objcopy
 
 # === Flags ===
 CFLAGS  := -m32 -std=gnu99 -ffreestanding -O2 -Wall -Wextra \
@@ -40,7 +41,10 @@ OBJS     := $(C_OBJS) $(ASM_OBJS)
 # Build Targets
 # =========================
 
+.PHONY: all clean run iso
+
 all: $(BUILD_DIR)/kernel.elf
+	@echo "[OK] Build complete."
 
 # Link kernel
 $(BUILD_DIR)/kernel.elf: $(OBJS)
@@ -96,5 +100,4 @@ run: iso
 clean:
 	@echo "[INFO] Cleaning build files..."
 	rm -rf $(BUILD_DIR) $(ISO_DIR) IronicOS.iso
-
-.PHONY: all clean run iso
+	

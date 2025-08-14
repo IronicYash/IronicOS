@@ -22,6 +22,10 @@
 ### 🛠️ Build & Run
 
 ```bash
+#install the requirement
+chmod +x installer.sh
+./installer.sh
+
 # Clone the repo
 git clone https://github.com/IronicYash/IronicOS.git
 cd IronicOS
