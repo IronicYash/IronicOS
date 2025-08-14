@@ -14,6 +14,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Cache cross-compiler
+      uses: actions/cache@v3
+      with:
+        path: ~/opt/cross
+        key: cross-compiler-${{ runner.os }}-v1
+
     - name: Install required packages
       run: |
         sudo apt-get update
@@ -33,39 +39,60 @@ jobs:
           curl
 
     - name: Build and Install Cross Compiler (C and C++)
+      timeout-minutes: 30
       run: |
         export TARGET=i686-elf
         export PREFIX="$HOME/opt/cross"
         export PATH="$PREFIX/bin:$PATH"
-        
+
+        # Check if cross-compiler is already installed
+        if [ -f "$PREFIX/bin/$TARGET-gcc" ]; then
+          echo "Cross-compiler already installed, skipping build"
+          exit 0
+        fi
+
+        echo "Creating source directory"
         mkdir -p $HOME/src
         cd $HOME/src
 
-        # Download binutils
+        echo "Downloading binutils"
         wget https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
+        echo "Extracting binutils"
         tar -xf binutils-2.41.tar.xz
 
+        echo "Building binutils"
         mkdir build-binutils
         cd build-binutils
+        echo "Configuring binutils"
         ../binutils-2.41/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
+        echo "Making binutils"
         make -j$(nproc)
+        echo "Installing binutils"
         make install
         cd ..
 
-        # Download GCC
+        echo "Downloading GCC"
         wget https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
+        echo "Extracting GCC"
         tar -xf gcc-13.2.0.tar.xz
 
+        echo "Building GCC"
         mkdir build-gcc
         cd build-gcc
+        echo "Configuring GCC"
         ../gcc-13.2.0/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --without-headers
+        echo "Making GCC (all-gcc)"
         make all-gcc -j$(nproc)
+        echo "Making GCC (all-target-libgcc)"
         make all-target-libgcc -j$(nproc)
+        echo "Installing GCC (install-gcc)"
         make install-gcc
+        echo "Installing GCC (install-target-libgcc)"
         make install-target-libgcc
         cd ..
 
     - name: Build ISO
+      timeout-minutes: 10
       run: |
         export PATH="$HOME/opt/cross/bin:$PATH"
         make
