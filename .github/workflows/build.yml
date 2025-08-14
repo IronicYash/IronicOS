@@ -1,62 +1,59 @@
-name: build
+name: Build and Test IronicOS
 
 on:
   push:
-    branches: [ main ]
+    branches: ["main"]
   pull_request:
+    branches: ["main"]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Cache cross-compiler
-      uses: actions/cache@v3
-      with:
-        path: ~/opt/cross
-        key: cross-compiler-${{ runner.os }}-prebuilt-13.2.0
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nasm qemu-system-x86
 
-    - name: Download prebuilt cross-compiler (if not cached)
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p ~/opt/cross
-        cd ~/opt/cross
-        echo "Downloading prebuilt i686-elf cross-compiler..."
-        wget https://github.com/lordmilko/i686-elf-tools/releases/download/13.2.0/i686-elf-tools-linux.zip
-        echo "Extracting..."
-        unzip i686-elf-tools-linux.zip
-        rm i686-elf-tools-linux.zip
-        echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
+      - name: Set up cross-compiler (cached)
+        uses: actions/cache@v4
+        with:
+          path: ~/opt/cross
+          key: cross-compiler-i686-elf-v1
+        id: cache-cross
 
-    - name: Install required packages
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          nasm \
-          grub-pc-bin \
-          xorriso \
-          qemu-system-x86 \
-          make \
-          wget \
-          curl \
-          unzip
+      - name: Build cross-compiler (if not cached)
+        if: steps.cache-cross.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/opt
+          cd /tmp
+          wget https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz
+          tar -xzf binutils-2.41.tar.gz
+          mkdir binutils-build && cd binutils-build
+          ../binutils-2.41/configure --target=i686-elf --prefix=$HOME/opt/cross --disable-nls --disable-werror
+          make -j$(nproc)
+          make install
+          cd /tmp
+          wget https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz
+          tar -xzf gcc-13.2.0.tar.gz
+          mkdir gcc-build && cd gcc-build
+          ../gcc-13.2.0/configure --target=i686-elf --prefix=$HOME/opt/cross --disable-nls --enable-languages=c --without-headers
+          make all-gcc -j$(nproc)
+          make all-target-libgcc -j$(nproc)
+          make install-gcc
+          make install-target-libgcc
 
-    - name: Build ISO
-      run: |
-        make CROSS_PREFIX="$HOME/opt/cross/bin/i686-elf-"
+      - name: Build kernel
+        run: |
+          export PATH="$HOME/opt/cross/bin:$PATH"
+          make CROSS_PREFIX="$HOME/opt/cross/bin/i686-elf-"
 
-    - name: QEMU boot test
-      run: |
-        echo "Booting OS in QEMU..."
-        qemu-system-i386 -cdrom IronicOS.iso -nographic -serial stdio -boot d -no-reboot -no-shutdown &
-        sleep 5
-        pkill -f qemu || true
-
-    - name: Upload ISO Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ironic-os-iso
-        path: IronicOS.iso
+      - name: Run kernel in QEMU and capture serial log
+        run: |
+          echo "=== QEMU SERIAL OUTPUT START ==="
+          qemu-system-i386 -kernel build/kernel.elf -serial stdio -display none -no-reboot -no-shutdown
+          echo "=== QEMU SERIAL OUTPUT END ==="

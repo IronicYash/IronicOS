@@ -17,8 +17,7 @@ extern void serial_init(void);
 extern void serial_puts(const char *);
 
 void kernel_main() {
-    serial_init();
-    serial_puts("IronicOS: kernel_main entered\n");
+    serial_puts("Booting IronicOS via QEMU Serial...\n");
 
     clear_screen();
     printf("Welcome to IronicOS!\n");
