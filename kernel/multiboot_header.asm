@@ -1,7 +1,12 @@
+; kernel/multiboot_header.asm
+; Multiboot v1 header (explicit constants + correct checksum)
 section .multiboot
-align 4
-    dd 0x1BADB002             ; magic number
-    dd 0x00                   ; flags
-    dd -(0x1BADB002)          ; checksum
+    align 4
 
-section .bss
+    MB_MAGIC    equ 0x1BADB002
+    MB_FLAGS    equ 0x0            ; change if you need memory map or modules
+    MB_CHECKSUM equ -(MB_MAGIC + MB_FLAGS)
+
+    dd MB_MAGIC        ; magic
+    dd MB_FLAGS        ; flags
+    dd MB_CHECKSUM     ; checksum (magic + flags + checksum == 0)

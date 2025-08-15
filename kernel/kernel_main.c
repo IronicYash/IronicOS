@@ -3,31 +3,50 @@
 #include "../lib/ports.h"
 #include "../lib/timer.h"
 #include "../lib/shell.h"
-#include "../lib/io.h"
 #include "../lib/serial.h"
 #include "../cpu/idt.h"
 #include "../cpu/isr.h"
 #include "../cpu/irq.h"
 #include <stdint.h>
 
-uint8_t example_byte;
-uint32_t count;
-
-extern void serial_init(void);
-extern void serial_puts(const char *);
-
 void kernel_main() {
-    serial_puts("Booting IronicOS via QEMU Serial...\n");
+    // ===== Stage 1: Early serial init =====
+    serial_init();
+    serial_puts("[IronicOS] Booting via QEMU serial...\n");
 
+    // ===== Stage 2: VGA clear and welcome =====
     clear_screen();
-    printf("Welcome to IronicOS!\n");
+    printf("[IronicOS] VGA output online.\n");
 
-    idt_init();         // Setup IDT
-    init_irq();      // Setup ISRs
-    init_isr();      // Setup IRQs
-    init_keyboard();    // Enable keyboard interrupt
+    // ===== Stage 3: IDT and ISRs =====
+    printf("[IronicOS] Setting up IDT...\n");
+    serial_puts("[IronicOS] Setting up IDT...\n");
+    idt_init();
 
-    init_timer(100);    // Initialize timer at 100 Hz
+    printf("[IronicOS] Installing ISRs...\n");
+    serial_puts("[IronicOS] Installing ISRs...\n");
+    init_isr();
 
-    shell_loop();       // Initialize the shell
+    printf("[IronicOS] Installing IRQs...\n");
+    serial_puts("[IronicOS] Installing IRQs...\n");
+    init_irq();
+
+    // ===== Stage 4: Device init =====
+    printf("[IronicOS] Initializing keyboard...\n");
+    serial_puts("[IronicOS] Initializing keyboard...\n");
+    init_keyboard();
+
+    printf("[IronicOS] Initializing timer at 100Hz...\n");
+    serial_puts("[IronicOS] Initializing timer at 100Hz...\n");
+    init_timer(100);
+
+    // ===== Stage 5: Shell =====
+    printf("[IronicOS] Entering shell...\n");
+    serial_puts("[IronicOS] Entering shell...\n");
+    shell_loop();
+
+    // If shell exits
+    printf("[IronicOS] Shell exited. Halting.\n");
+    serial_puts("[IronicOS] Shell exited. Halting.\n");
+    for(;;) { __asm__ volatile("hlt"); }
 }

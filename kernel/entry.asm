@@ -1,44 +1,41 @@
-; kernel/entry.asm
-; Production-ready kernel entry for i386 (NASM syntax)
-; - Sets up a safe stack
-; - Sets DS/ES/FS/GS to a sane data selector (0x10)
-; - Calls kernel_main (C)
-; - Halts if kernel_main returns
+; entry.asm - IronicOS bootstrap
+; -------------------------------
+BITS 32
+GLOBAL _start
 
-global _start
-extern kernel_main
+extern kernel_main       ; kernel main in C
+extern bss_start         ; start of .bss
+extern bss_end           ; end of .bss
+extern stack_top         ; top of kernel stack
 
-section .text
 _start:
-    cli                 ; disable interrupts while we setup stack/segments
-    cld                 ; clear direction flag (string ops go forward)
+    ; -----------------------------
+    ; Set up the stack
+    ; -----------------------------
+    mov esp, stack_top
+    mov ebp, esp
 
-    ; stack_top is defined in the BSS below; set ESP to its address
-    mov eax, stack_top
-    mov esp, eax
-    and esp, 0xFFFFFFF0 ; optional: align stack to 16 bytes for best practice
-    ; Assumes a flat GDT where 0x10 is the kernel data selector.
-    ; If you use a custom GDT, change the selector accordingly.
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+    ; -----------------------------
+    ; Zero out .bss
+    ; -----------------------------
+    mov edi, bss_start
+    mov ecx, bss_end
+    sub ecx, edi           ; ECX = size of BSS
+    xor eax, eax           ; fill with 0
+    shr ecx, 2             ; divide by 4 for 32-bit words
+    jz .bss_done
+    rep stosd              ; fill .bss with 0
+.bss_done:
 
-    ; -------------------------
-    ; Call into C kernel
-    ; -------------------------
+    ; -----------------------------
+    ; Call kernel_main
+    ; -----------------------------
     call kernel_main
 
-    ; If kernel_main returns, halt the CPU in a safe loop
-.halt_loop:
+    ; -----------------------------
+    ; Halt CPU if kernel_main returns
+    ; -----------------------------
+.halt:
     cli
     hlt
-    jmp .halt_loop
-
-section .bss
-align 16
-stack_bottom:
-    ; Reserve 16 KiB for the kernel stack (adjust if needed)
-    resb 16384
-stack_top:
+    jmp .halt
