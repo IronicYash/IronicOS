@@ -4,26 +4,39 @@
 #include "../lib/timer.h"
 #include "../lib/shell.h"
 #include "../lib/serial.h"
+#include "../lib/string.h"
 #include "../cpu/idt.h"
 #include "../cpu/isr.h"
 #include "../cpu/irq.h"
 #include <stdint.h>
 
+
 void kernel_main() {
     // Test harness expects this exact line
-    print("Booting IronicOS\n");
+    serial_puts("Booting IronicOS\n");
 
-    // Your regular debug prints
-    print("[IronicOS] Setting up IDT...\n");
+    // Your debug prints
+    serial_puts("[IronicOS] Setting up IDT...\n");
     idt_init();
-    print("[IronicOS] Installing ISRs...\n");
-    isr_install();
-    print("[IronicOS] Installing IRQs...\n");
-    irq_install();
-    print("[IronicOS] Initializing keyboard...\n");
-    keyboard_init();
-    print("[IronicOS] Initializing timer at 100Hz...cv\n");
-    timer_init(100);
 
-    // Your kernel main loop or shell...
+    serial_puts("[IronicOS] Installing ISRs...\n");
+    init_isr();
+
+    serial_puts("[IronicOS] Installing IRQs...\n");
+    init_irq();
+
+    serial_puts("[IronicOS] Initializing keyboard...\n");
+    init_keyboard();
+
+    serial_puts("[IronicOS] Initializing timer at 100Hz...\n");
+    init_timer(100);
+
+    // Example: infinite loop or shell
+    serial_puts("[IronicOS] Kernel initialized. Entering main loop...\n");
+    while (1) {
+        // Your shell or main kernel loop goes here
+		shell_init();
+		shell_run();
+        __asm__ volatile ("hlt");
+    }
 }

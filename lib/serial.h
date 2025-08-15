@@ -1,11 +1,13 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include <stddef.h>
+#include <stdint.h>
 
-void serial_init(void);
-void serial_write_char(char a);
-void serial_puts(const char *str);
-void serial_puts_n(const char *str, size_t n);
+void serial_init();
+void serial_putc(char c);
+void serial_puts(const char* str);
+void serial_put_hex(uint32_t n);
+void serial_put_dec(uint32_t n);
+char serial_getc();
 
-#endif /* SERIAL_H */
+#endif

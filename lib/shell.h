@@ -1,6 +1,8 @@
-#ifndef IRT_SHELL_H
-#define IRT_SHELL_H
+// lib/shell.h
+#ifndef SHELL_H
+#define SHELL_H
 
-void shell_loop(void);
+void shell_init();
+void shell_run();
 
-#endif /* IRT_SHELL_H */
+#endif

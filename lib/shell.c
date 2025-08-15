@@ -1,47 +1,69 @@
+// lib/shell.c - IronicOS simple production shell
 #include "shell.h"
-#include "screen.h"
-#include "keyboard.h"
+#include "serial.h"
 #include "string.h"
-#include "../cpu/irq.h"
-#include <stdint.h>
 
-static char line_buf[128];
+#define MAX_INPUT 128
 
-static void exec_command(const char *cmd) {
-    if (strcmp(cmd, "help") == 0) {
-        printf("Built-in: help, clear, echo, reboot\n");
-    } else if (strcmp(cmd, "clear") == 0) {
-        clear_screen();
-    } else if (strncmp(cmd, "echo ", 5) == 0) {
-        printf("%s\n", cmd + 5);
-    } else if (strcmp(cmd, "reboot") == 0) {
-        /* Triple fault / jump to reset vector - crude */
-        asm volatile ("cli");
-        for (;;) asm volatile ("hlt");
-    } else {
-        printf("Unknown command: %s\n", cmd);
-    }
+void shell_init() {
+    serial_puts("[IronicOS] Shell initialized.\n");
 }
 
-void shell_loop(void) {
-    printf("> ");
+void shell_run() {
+    char input[MAX_INPUT];
     int pos = 0;
+
+    serial_puts("[IronicOS] Entering shell. Type 'help' for commands.\n");
+
     while (1) {
-        int c = keyboard_getchar();
-        if (!c) { asm volatile("hlt"); continue; }
-        if (c == '\r' || c == '\n') {
-            putchar('\n');
-            line_buf[pos] = '\0';
-            if (pos > 0) exec_command(line_buf);
-            pos = 0;
-            printf("> ");
-        } else if (c == '\b') {
-            if (pos > 0) { pos--; printf("\b \b"); }
-        } else {
-            if (pos < (int)(sizeof(line_buf) - 1)) {
-                line_buf[pos++] = (char)c;
-                putchar((char)c);
+        serial_puts("> ");  // prompt
+        pos = 0;
+        memset(input, 0, MAX_INPUT);
+
+        // Read user input
+        while (1) {
+            char c = serial_getc();
+
+            // Handle Enter
+            if (c == '\r' || c == '\n') {
+                serial_puts("\n");
+                break;
             }
+
+            // Handle Backspace
+            if (c == 0x08 && pos > 0) {  // backspace ASCII
+                pos--;
+                serial_puts("\b \b");
+                continue;
+            }
+
+            if (pos < MAX_INPUT - 1) {
+                input[pos++] = c;
+                char s[2] = {c, 0};
+                serial_puts(s);  // echo character
+            }
+        }
+
+        // Remove trailing newline
+        input[pos] = '\0';
+
+        // Parse commands
+        if (strcmp(input, "help") == 0) {
+            serial_puts("Available commands: help, echo, clear, reboot\n");
+        } else if (strncmp(input, "echo ", 5) == 0) {
+            serial_puts(input + 5);
+            serial_puts("\n");
+        } else if (strcmp(input, "clear") == 0) {
+            serial_puts("\033[2J\033[H"); // ANSI clear screen
+        } else if (strcmp(input, "reboot") == 0) {
+            serial_puts("Rebooting...\n");
+            __asm__ volatile ("int $0x19"); // BIOS reboot
+        } else if (strlen(input) == 0) {
+            continue;  // ignore empty input
+        } else {
+            serial_puts("Unknown command: ");
+            serial_puts(input);
+            serial_puts("\n");
         }
     }
 }

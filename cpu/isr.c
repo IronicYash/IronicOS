@@ -1,6 +1,7 @@
 #include "isr.h"
 #include "../lib/screen.h"  /* for debug output, printf */
 #include "../lib/string.h"
+#include "../lib/serial.h"
 
 /* Table of ISR stub addresses for IDT setup */
 void* isr_stub_table[32] = {
@@ -21,8 +22,19 @@ void isr_default_handler(struct registers *r)
 {
     /* Basic fault reporting */
     clear_screen();
-    printf("Unhandled exception: %d\n", r->int_no);
-    printf("EIP: 0x%08X  CS: 0x%08X  EFLAGS: 0x%08X\n", r->eip, r->cs, r->eflags);
+    // Print the unhandled exception number in decimal
+	serial_puts("Unhandled exception: ");
+	serial_put_dec(r->int_no);  // prints decimal
+	serial_puts("\n");
+
+	// Print EIP, CS, and EFLAGS in hexadecimal
+	serial_puts("EIP: 0x");
+	serial_put_hex(r->eip);
+	serial_puts("  CS: 0x");
+	serial_put_hex(r->cs);
+	serial_puts("  EFLAGS: 0x");
+	serial_put_hex(r->eflags);
+	serial_puts("\n");
 
     /* Halt */
     for (;;)
