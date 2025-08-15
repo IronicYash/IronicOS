@@ -1,6 +1,5 @@
 name: Build & Test IronicOS
 
-# Run on commits and PRs to main branch (safe default)
 on:
   push:
     branches: ["main"]
@@ -27,22 +26,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            bison \
-            flex \
-            libgmp3-dev \
-            libmpc-dev \
-            libmpfr-dev \
-            texinfo \
-            nasm \
-            unzip \
-            wget \
-            curl \
-            xorriso \
-            grub-pc-bin \
-            mtools \
-            qemu-system-i386 \
-            make
+            build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev \
+            texinfo nasm unzip wget curl xorriso grub-pc-bin mtools \
+            qemu-system-i386 make rsync
 
       - name: Download prebuilt cross-compiler (if not cached)
         if: steps.cache-cross.outputs.cache-hit != 'true'
@@ -51,32 +37,36 @@ jobs:
           mkdir -p "$HOME/opt/cross"
           cd "$HOME/opt/cross"
 
-          echo "Attempting to install prebuilt i686-elf toolchain (lordmilko 13.2.0 zip)..."
+          echo "Attempting to install lordmilko 13.2.0 ZIP..."
           if wget -q -O /tmp/i686-toolchain.zip "https://github.com/lordmilko/i686-elf-tools/releases/download/13.2.0/i686-elf-tools-linux.zip"; then
-            echo "Extracting lordmilko toolchain..."
             unzip -q /tmp/i686-toolchain.zip -d /tmp/i686-toolchain
-            # Copy into $HOME/opt/cross; preserve layout inside archive
             rsync -a /tmp/i686-toolchain/ "$HOME/opt/cross/"
             rm -rf /tmp/i686-toolchain /tmp/i686-toolchain.zip
-            echo "Installed lordmilko prebuilt toolchain."
+            echo "Installed lordmilko toolchain"
           else
-            echo "lordmilko download failed — trying cfenollosa fallback..."
+            echo "lordmilko zip failed; trying cfenollosa tarball..."
             if wget -q -O /tmp/i686-toolchain.tar.gz "https://github.com/cfenollosa/os-tutorial/releases/download/cc1/i686-elf-tools.tar.gz"; then
-              echo "Extracting cfenollosa toolchain..."
               tar -xzf /tmp/i686-toolchain.tar.gz --strip-components=1 -C "$HOME/opt/cross"
               rm -f /tmp/i686-toolchain.tar.gz
-              echo "Installed cfenollosa prebuilt toolchain."
+              echo "Installed cfenollosa toolchain"
             else
               echo "ERROR: No prebuilt toolchain available from known sources."
-              echo "CI will stop here to avoid a long, unreliable GCC build in the runner."
-              echo "If you want the workflow to build GCC from source in CI, notify me and I can add a heavy fallback (long and error-prone)."
               exit 1
             fi
           fi
 
-          # Ensure the toolchain's bin is on PATH for subsequent steps
-          echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
-          echo "Toolchain installed and path appended to GITHUB_PATH."
+      - name: Expose toolchain bin to PATH (always)
+        run: |
+          set -euo pipefail
+          if [ -d "$HOME/opt/cross/bin" ]; then
+            echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
+            echo "Appended $HOME/opt/cross/bin to GITHUB_PATH"
+          else
+            echo "Note: $HOME/opt/cross/bin does not exist (cache may be empty or download failed)."
+            echo "Listing $HOME/opt and $HOME/opt/cross for debugging:"
+            ls -la "$HOME/opt" || true
+            ls -la "$HOME/opt/cross" || true
+          fi
 
       - name: Verify cross toolchain
         run: |
@@ -85,46 +75,41 @@ jobs:
           if command -v i686-elf-gcc >/dev/null 2>&1; then
             echo "i686-elf-gcc found: $(i686-elf-gcc --version | head -n1)"
           else
-            echo "ERROR: i686-elf-gcc not found on PATH. Aborting."
+            echo "ERROR: i686-elf-gcc not found on PATH. Dumping debug info..."
+            echo "PATH=$PATH"
+            echo "--- ls $HOME/opt/cross/bin ---"
+            ls -la "$HOME/opt/cross/bin" || true
+            echo "--- find $HOME/opt/cross -maxdepth 2 -type f -executable ---"
+            find "$HOME/opt/cross" -maxdepth 2 -type f -executable -ls || true
             exit 1
           fi
 
       - name: Build kernel & create ISO
         run: |
           set -euo pipefail
-          echo "Building kernel (Makefile uses CROSS_PREFIX or PATH)..."
-          # Prefer CROSS_PREFIX Makefile variable; Makefile should respect CROSS_PREFIX ?= default
           make CROSS_PREFIX="$HOME/opt/cross/bin/i686-elf-"
-          echo "Creating ISO..."
           make iso
           ls -lh IronicOS.iso || true
 
       - name: QEMU boot test (capture serial log & fail if no boot message)
         run: |
           set -euo pipefail
-          # Run QEMU in background, have it write serial output to file
           rm -f qemu_serial.log || true
           echo "Starting QEMU (serial -> qemu_serial.log)..."
           qemu-system-i386 -cdrom IronicOS.iso -serial file:qemu_serial.log -display none -m 256M -boot d -no-reboot -no-shutdown &
           QEMU_PID=$!
-          # Give the VM a short time to boot and produce serial output
           sleep 6
-          # After a short wait, print what we have
-          echo "=== BEGIN SERIAL LOG (first 200 lines) ==="
+          echo "=== BEGIN SERIAL LOG ==="
           sed -n '1,200p' qemu_serial.log || true
           echo "=== END SERIAL LOG ==="
-          # Look for the expected boot string; fail if missing
           if grep -q "Booting IronicOS" qemu_serial.log; then
-            echo "Boot message found in serial log."
+            echo "Boot message found."
           else
-            echo "ERROR: 'Booting IronicOS' not found in serial log — failing CI."
-            echo "Full serial log below:"
+            echo "ERROR: 'Booting IronicOS' not found in serial log."
             cat qemu_serial.log || true
-            # kill qemu (best-effort) then fail
             kill $QEMU_PID >/dev/null 2>&1 || true
             exit 1
           fi
-          # Kill qemu cleanly
           kill $QEMU_PID >/dev/null 2>&1 || true
 
       - name: Upload artifacts (ISO + serial log)
