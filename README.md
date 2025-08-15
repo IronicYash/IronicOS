@@ -52,10 +52,20 @@ Make sure you have the following installed:
 git clone https://github.com/IronicYash/IronicOS.git
 cd IronicOS
 
-# Install required dependencies (Linux)
+# 1) Install unzip (and a few useful helpers)
+sudo apt update
+sudo apt install -y unzip wget curl rsync tar ca-certificates
+
+# 2) Re-run the installer you already started
 chmod +x installer.sh
 ./installer.sh
 
+# 3) If installer finished successfully, add toolchain to PATH (if script didn't already)
+echo 'export PATH="$HOME/opt/cross/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# 4) Verify cross-compiler is available
+which i686-elf-gcc && i686-elf-gcc --version
 # Build the kernel
 make
 
@@ -66,8 +76,6 @@ make iso
 make run
 
 ## 📂 Project Structure
-
-```bash
 
 .IronicOS/
 ├── Makefile                # Main build file (supports make, make iso, make run, make clean)
