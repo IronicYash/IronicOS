@@ -1,5 +1,6 @@
-name: Build and Test IronicOS
+name: Build & Test IronicOS
 
+# Run on commits and PRs to main branch (safe default)
 on:
   push:
     branches: ["main"]
@@ -7,53 +8,129 @@ on:
     branches: ["main"]
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nasm qemu-system-x86
-
-      - name: Set up cross-compiler (cached)
-        uses: actions/cache@v4
+      - name: Cache cross-compiler
+        id: cache-cross
+        uses: actions/cache@v3
         with:
           path: ~/opt/cross
-          key: cross-compiler-i686-elf-v1
-        id: cache-cross
+          key: cross-compiler-${{ runner.os }}-v1
 
-      - name: Build cross-compiler (if not cached)
+      - name: Install apt packages (dev + runtime)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            bison \
+            flex \
+            libgmp3-dev \
+            libmpc-dev \
+            libmpfr-dev \
+            texinfo \
+            nasm \
+            unzip \
+            wget \
+            curl \
+            xorriso \
+            grub-pc-bin \
+            mtools \
+            qemu-system-i386 \
+            make
+
+      - name: Download prebuilt cross-compiler (if not cached)
         if: steps.cache-cross.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/opt
-          cd /tmp
-          wget https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz
-          tar -xzf binutils-2.41.tar.gz
-          mkdir binutils-build && cd binutils-build
-          ../binutils-2.41/configure --target=i686-elf --prefix=$HOME/opt/cross --disable-nls --disable-werror
-          make -j$(nproc)
-          make install
-          cd /tmp
-          wget https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz
-          tar -xzf gcc-13.2.0.tar.gz
-          mkdir gcc-build && cd gcc-build
-          ../gcc-13.2.0/configure --target=i686-elf --prefix=$HOME/opt/cross --disable-nls --enable-languages=c --without-headers
-          make all-gcc -j$(nproc)
-          make all-target-libgcc -j$(nproc)
-          make install-gcc
-          make install-target-libgcc
+          set -euo pipefail
+          mkdir -p "$HOME/opt/cross"
+          cd "$HOME/opt/cross"
 
-      - name: Build kernel
+          echo "Attempting to install prebuilt i686-elf toolchain (lordmilko 13.2.0 zip)..."
+          if wget -q -O /tmp/i686-toolchain.zip "https://github.com/lordmilko/i686-elf-tools/releases/download/13.2.0/i686-elf-tools-linux.zip"; then
+            echo "Extracting lordmilko toolchain..."
+            unzip -q /tmp/i686-toolchain.zip -d /tmp/i686-toolchain
+            # Copy into $HOME/opt/cross; preserve layout inside archive
+            rsync -a /tmp/i686-toolchain/ "$HOME/opt/cross/"
+            rm -rf /tmp/i686-toolchain /tmp/i686-toolchain.zip
+            echo "Installed lordmilko prebuilt toolchain."
+          else
+            echo "lordmilko download failed — trying cfenollosa fallback..."
+            if wget -q -O /tmp/i686-toolchain.tar.gz "https://github.com/cfenollosa/os-tutorial/releases/download/cc1/i686-elf-tools.tar.gz"; then
+              echo "Extracting cfenollosa toolchain..."
+              tar -xzf /tmp/i686-toolchain.tar.gz --strip-components=1 -C "$HOME/opt/cross"
+              rm -f /tmp/i686-toolchain.tar.gz
+              echo "Installed cfenollosa prebuilt toolchain."
+            else
+              echo "ERROR: No prebuilt toolchain available from known sources."
+              echo "CI will stop here to avoid a long, unreliable GCC build in the runner."
+              echo "If you want the workflow to build GCC from source in CI, notify me and I can add a heavy fallback (long and error-prone)."
+              exit 1
+            fi
+          fi
+
+          # Ensure the toolchain's bin is on PATH for subsequent steps
+          echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
+          echo "Toolchain installed and path appended to GITHUB_PATH."
+
+      - name: Verify cross toolchain
         run: |
-          export PATH="$HOME/opt/cross/bin:$PATH"
+          set -euo pipefail
+          echo "Checking i686-elf-gcc availability..."
+          if command -v i686-elf-gcc >/dev/null 2>&1; then
+            echo "i686-elf-gcc found: $(i686-elf-gcc --version | head -n1)"
+          else
+            echo "ERROR: i686-elf-gcc not found on PATH. Aborting."
+            exit 1
+          fi
+
+      - name: Build kernel & create ISO
+        run: |
+          set -euo pipefail
+          echo "Building kernel (Makefile uses CROSS_PREFIX or PATH)..."
+          # Prefer CROSS_PREFIX Makefile variable; Makefile should respect CROSS_PREFIX ?= default
           make CROSS_PREFIX="$HOME/opt/cross/bin/i686-elf-"
+          echo "Creating ISO..."
+          make iso
+          ls -lh IronicOS.iso || true
 
-      - name: Run kernel in QEMU and capture serial log
+      - name: QEMU boot test (capture serial log & fail if no boot message)
         run: |
-          echo "=== QEMU SERIAL OUTPUT START ==="
-          qemu-system-i386 -kernel build/kernel.elf -serial stdio -display none -no-reboot -no-shutdown
-          echo "=== QEMU SERIAL OUTPUT END ==="
+          set -euo pipefail
+          # Run QEMU in background, have it write serial output to file
+          rm -f qemu_serial.log || true
+          echo "Starting QEMU (serial -> qemu_serial.log)..."
+          qemu-system-i386 -cdrom IronicOS.iso -serial file:qemu_serial.log -display none -m 256M -boot d -no-reboot -no-shutdown &
+          QEMU_PID=$!
+          # Give the VM a short time to boot and produce serial output
+          sleep 6
+          # After a short wait, print what we have
+          echo "=== BEGIN SERIAL LOG (first 200 lines) ==="
+          sed -n '1,200p' qemu_serial.log || true
+          echo "=== END SERIAL LOG ==="
+          # Look for the expected boot string; fail if missing
+          if grep -q "Booting IronicOS" qemu_serial.log; then
+            echo "Boot message found in serial log."
+          else
+            echo "ERROR: 'Booting IronicOS' not found in serial log — failing CI."
+            echo "Full serial log below:"
+            cat qemu_serial.log || true
+            # kill qemu (best-effort) then fail
+            kill $QEMU_PID >/dev/null 2>&1 || true
+            exit 1
+          fi
+          # Kill qemu cleanly
+          kill $QEMU_PID >/dev/null 2>&1 || true
+
+      - name: Upload artifacts (ISO + serial log)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironic-os-artifacts
+          path: |
+            IronicOS.iso
+            qemu_serial.log

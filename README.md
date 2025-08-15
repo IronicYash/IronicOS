@@ -1,39 +1,68 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/IronicOS-Building-brightgreen?style=for-the-badge&logo=linux" alt="IronicOS Badge">
-  <img src="https://img.shields.io/github/license/yourusername/IronicOS?style=for-the-badge" alt="License Badge">
+  <img src="https://img.shields.io/badge/IronicOS-Building-brightgreen?style=for-the-badge&logo=linux" alt="IronicOS Build Badge">
+  <img src="https://img.shields.io/github/license/IronicYash/IronicOS?style=for-the-badge" alt="License Badge">
 </p>
 
 <h1 align="center">🌀 IronicOS</h1>
 <p align="center">
-  A simple experimental operating system built from scratch with ❤️ in C, Assembly & GRUB. <br>
-  Learn systems programming, kernel development, and bootloader basics—all in one project.
+  <b>IronicOS</b> is a minimal experimental operating system built from scratch in <b>C</b>, <b>x86 Assembly</b>, and <b>GRUB</b>.  
+  Designed for learning systems programming, kernel development, and bootloader fundamentals — all in one project.
 </p>
+
+---
+
+## 📸 QEMU Boot Preview
+
+<p align="center">
+  <img src="docs/qemu_boot.png" alt="IronicOS Booting in QEMU" width="600">
+  <br>
+  <sub>QEMU showing the kernel message: <i>"Booting IronicOS..."</i></sub>
+</p>
+
+---
+
+## 📜 Features
+- **Custom 32-bit Protected Mode Kernel**  
+- **GRUB Multiboot Compatible Bootloader**  
+- **Basic VGA Text Output**  
+- **Interrupt Descriptor Table (IDT) Setup**  
+- **Interrupt Service Routines (ISRs) & IRQ Handling**  
+- **Simple PS/2 Keyboard Input**  
+- **Basic Shell Interface**  
+- **QEMU Virtual Machine Support**  
+- **Continuous Integration with GitHub Actions** (boot log verification)
 
 ---
 
 ## 🚀 Getting Started
 
 ### 📦 Requirements
-- GCC cross-compiler (`i686-elf-gcc`)
-- `nasm` assembler
-- `grub-pc-bin`, `xorriso`, `mtools`
-- `make`, `qemu` for running the OS
+Make sure you have the following installed:
+- **GCC Cross-Compiler** (`i686-elf-gcc`)
+- **NASM** assembler
+- **GRUB Tools** (`grub-pc-bin`, `xorriso`, `mtools`)
+- **Build & Run Tools** (`make`, `qemu-system-i386`)
 
-### 🛠️ Build & Run
+---
+
+### 🛠️ Installation & Build
 
 ```bash
-#install the requirement
-chmod +x installer.sh
-./installer.sh
-
-# Clone the repo
+# Clone the repository
 git clone https://github.com/IronicYash/IronicOS.git
 cd IronicOS
 
-# Build the kernel and ISO
+# Install required dependencies (Linux)
+chmod +x installer.sh
+./installer.sh
+
+# Build the kernel
 make
 
-# Run it in QEMU
+# Create the bootable ISO
+make iso
+
+# Run the OS in QEMU
 make run
 
 ## 📂 Project Structure

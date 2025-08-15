@@ -77,7 +77,7 @@ iso: $(BUILD_DIR)/kernel.elf
 	elif [ -f grub.cfg ]; then \
 	    cp grub.cfg $(GRUB_DIR)/; \
 	else \
-	    echo 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > $(GRUB_DIR)/grub.cfg; \
+	    printf 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > $(GRUB_DIR)/grub.cfg; \
 	    echo "[INFO] No grub.cfg found, created default one."; \
 	fi
 	@echo "[INFO] Building ISO image..."
@@ -91,7 +91,7 @@ iso: $(BUILD_DIR)/kernel.elf
 
 run: iso
 	@echo "[INFO] Running in QEMU..."
-	qemu-system-i386 -cdrom IronicOS.iso
+	qemu-system-i386 -cdrom IronicOS.iso -serial stdio -display none -m 256M
 
 # =========================
 # Cleanup
