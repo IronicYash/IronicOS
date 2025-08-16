@@ -29,8 +29,7 @@ ASM_SOURCES := \
 	kernel/multiboot_header.asm \
 	kernel/entry.asm \
 	cpu/idt_load.asm \
-	cpu/isr.asm \
-	cpu/irq.asm
+	cpu/isr_irq_stubs.asm
 
 # === Object Files ===
 C_OBJS   := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_SOURCES))
@@ -77,7 +76,7 @@ iso: $(BUILD_DIR)/kernel.elf
 	elif [ -f grub.cfg ]; then \
 	    cp grub.cfg $(GRUB_DIR)/; \
 	else \
-	    printf 'menuentry "IronicOS" {\n    multiboot /boot/kernel.elf\n    boot\n}' > $(GRUB_DIR)/grub.cfg; \
+	    printf 'menuentry \"IronicOS\" {\n    multiboot /boot/kernel.elf\n    boot\n}' > $(GRUB_DIR)/grub.cfg; \
 	    echo "[INFO] No grub.cfg found, created default one."; \
 	fi
 	@echo "[INFO] Building ISO image..."

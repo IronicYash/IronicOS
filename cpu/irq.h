@@ -1,25 +1,22 @@
-#ifndef IRQ_H
-#define IRQ_H
-
+#pragma once
 #include <stdint.h>
-#include "isr.h"    /* reuses registers_t */
 
-typedef void (*irq_handler_t)(registers_t* r);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* Assembly IRQ stubs (for IDT 32..47 after PIC remap) */
-extern void irq0();  extern void irq1();  extern void irq2();  extern void irq3();
-extern void irq4();  extern void irq5();  extern void irq6();  extern void irq7();
-extern void irq8();  extern void irq9();  extern void irq10(); extern void irq11();
-extern void irq12(); extern void irq13(); extern void irq14(); extern void irq15();
+typedef void (*irq_callback_t)(uint32_t irq);
 
-/* Called by asm common stub */
-void irq_dispatch(registers_t* r);
+/* Top-level handler called from ASM for PIC IRQs (32..47) */
+void irq_handler_c(uint32_t vec);
 
-/* Your irq.c API */
-void register_irq_handler(uint8_t irq, irq_handler_t handler);
-void irq_install_handler(uint8_t irq, irq_handler_t handler);
-void irq_uninstall_handler(uint8_t irq);
-void irq_remap(void);
+/* Init and registration for IRQ handlers */
 void init_irq(void);
+void register_irq_handler(uint8_t irq, irq_callback_t cb);
 
+/* ASM-provided table of IRQ stubs (0..15), mapped to IDT vectors 32..47 */
+extern void* irq_stub_table[16];
+
+#ifdef __cplusplus
+}
 #endif
