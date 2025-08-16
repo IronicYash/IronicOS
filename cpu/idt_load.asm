@@ -1,10 +1,9 @@
-[BITS 32]
+; cpu/idt_load.asm  (NASM syntax)
 global idt_load
+extern idtp      ; declare idtp comes from C code / another object
 
 section .text
-; void idt_load(void* idtp);
 idt_load:
-    cli
-    lidt [esp + 4]   ; Load IDT pointer from first argument on stack
-    sti
+    ; idtp is a 6-byte structure in C: 2-byte limit, 4-byte base
+    lidt [idtp]
     ret

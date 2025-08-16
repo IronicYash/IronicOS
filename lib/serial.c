@@ -60,3 +60,15 @@ void serial_put_dec(uint32_t n) {
     }
     serial_puts(buf + i + 1);
 }
+
+void serial_puthex(uint32_t value) {
+    char buf[11];           // "0x" + 8 hex digits + '\0' = 11
+    buf[0] = '0';
+    buf[1] = 'x';
+    for (int i = 0; i < 8; ++i) {
+        uint8_t nib = (value >> ((7 - i) * 4)) & 0xF;
+        buf[2 + i] = (nib < 10) ? ('0' + nib) : ('A' + (nib - 10));
+    }
+    buf[10] = '\0';
+    serial_puts(buf);
+}
